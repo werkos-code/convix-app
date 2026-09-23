@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Convix
 
-## Getting Started
+Personal financial cockpit. Answers: **how much can I safely spend until my next salary?**
 
-First, run the development server:
+Live target: [https://convix.cloud](https://convix.cloud)
+
+## Stack
+
+- Next.js (App Router) + TypeScript strict + Tailwind CSS
+- Supabase (Postgres, Auth Google OAuth, RLS)
+- Vercel hosting + PWA (Serwist) + Web Push (VAPID)
+- Money stored as **EUR cents** (integers)
+
+## Quick start
 
 ```bash
+cp .env.example .env.local
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Apply the SQL migration in `supabase/migrations/` to your Supabase project before using finance features.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Full external setup (GitHub, Supabase, Google OAuth, Vercel, DNS, PWA, push):
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Your checklist (start here):** [docs/YOUR-TODOS.md](docs/YOUR-TODOS.md)
+- Click-by-click Phase 1: [docs/phase-1-setup.md](docs/phase-1-setup.md)
+- Security & backups: [docs/security.md](docs/security.md)
+- Architecture: [docs/architecture-v1.md](docs/architecture-v1.md)
 
-## Learn More
+## Production env (Vercel)
 
-To learn more about Next.js, take a look at the following resources:
+| Variable | Notes |
+|----------|--------|
+| `NEXT_PUBLIC_SITE_URL` | `https://convix.cloud` |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Project keys |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server only — push dispatch |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Web Push |
+| `CRON_SECRET` | Protects `/api/push/dispatch` |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+See `.env.example` for the full list.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Scripts
 
-## Deploy on Vercel
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Local development |
+| `npm run build` | Production build |
+| `npm test` | Unit tests (Free Spendable, periods, insights, push) |
+| `npm run lint` | ESLint |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Core concept
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Free Spendable** ≠ bank balance. It subtracts open obligations and remaining variable budget reserves from tracked cash (last confirmed balance ± ledger since confirm).
+
+## Project map
+
+- `app/(app)/app/*` — authenticated screens (dashboard, timeline, quick expense, Klarna, …)
+- `app/actions/*` — server mutations
+- `lib/calc` — Free Spendable engine
+- `lib/periods` — salary period date math (24th → 23rd)
+- `lib/push` — Web Push evaluate + send
+- `supabase/migrations` — schema + RLS
