@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Jouw persoonlijke financiële cockpit — vrij besteedbaar tot je volgende salaris.",
     start_url: "/app",
     display: "standalone",
-    background_color: "#f6f3fb",
+    background_color: "#ffffff",
     theme_color: "#6d5efc",
     orientation: "portrait-primary",
     categories: ["finance", "productivity"],
@@ -26,7 +26,7 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: "any",
       },
       {
-        src: "/icons/icon-512.png",
+        src: "/icons/icon-512-maskable.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
