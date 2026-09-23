@@ -243,7 +243,7 @@ async function TimelineContent({
       });
 
     entries = [...ledgerEntries, ...obligationEntries].sort((a, b) =>
-      a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
+      a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
     );
   } catch (e) {
     if (isNextControlFlowError(e)) throw e;

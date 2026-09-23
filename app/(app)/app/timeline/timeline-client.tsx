@@ -23,7 +23,7 @@ function groupByDate(entries: TimelineEntry[]) {
     map.set(e.date, list);
   }
   return [...map.entries()].sort(([a], [b]) =>
-    a < b ? 1 : a > b ? -1 : 0,
+    a < b ? -1 : a > b ? 1 : 0,
   );
 }
 
