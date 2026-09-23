@@ -92,7 +92,7 @@ export function buildDeterministicInsights(
       severity: "critical",
       title: "Vrij besteedbaar is negatief",
       message:
-        "Verplichtingen en budgetten zijn hoger dan je saldo plus verwachte inkomsten. Bekijk Binnenkort en schaaf bij.",
+        "Verplichtingen en budgetten zijn hoger dan je huidige saldo. Bekijk Binnenkort en schaaf bij.",
       meta: { freeSpendableCents: breakdown.freeSpendableCents },
     });
   }

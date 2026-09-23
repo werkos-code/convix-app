@@ -48,7 +48,9 @@ export async function confirmPeriodBalances(input: {
       const account = accountMap.get(entry.accountId);
       if (!account) return fail(`Unknown account ${entry.accountId}`);
 
-      const actualCents = requireCents(entry.actualEuros, "Balance");
+      const actualCents = requireCents(entry.actualEuros, "Saldo", {
+        allowNegative: true,
+      });
       const expectedCents = account.last_confirmed_balance_cents;
       const carry = computeCarryOver(expectedCents, actualCents);
 

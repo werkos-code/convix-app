@@ -32,11 +32,7 @@ export default async function OnboardingPage() {
   return (
     <div className="flex flex-col gap-6">
       <ConvixWordmark />
-      <PageHeader
-        title="Richt je cockpit in"
-        description="Voeg je betaalrekening en salarisdag toe. We openen je eerste periode en zetten een paar budgetcategorieën klaar."
-        icon={Rocket}
-      />
+      <PageHeader title="Richt je cockpit in" icon={Rocket} />
       <OnboardingForm />
     </div>
   );

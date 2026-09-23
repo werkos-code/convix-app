@@ -103,7 +103,7 @@ export function evaluatePushCandidates(
         dedupeKey: insight.id,
         title: insight.title,
         body: insight.message,
-        url: "/app/budgets",
+        url: "/app/uitgaand?tab=budgetten",
       });
     }
     if (insight.kind === "klarna_upcoming") {

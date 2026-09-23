@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { formatDateRangeNL } from "@/lib/dates/format";
+import { formatDateRangeShortNL } from "@/lib/dates/format";
 import { cn } from "@/lib/utils";
 
 type PeriodSwitcherProps = {
@@ -9,6 +9,8 @@ type PeriodSwitcherProps = {
   nextLabel: string | null;
   view: "current" | "next";
   className?: string;
+  /** Tighter chrome for the home header. */
+  compact?: boolean;
 };
 
 export function PeriodSwitcher({
@@ -16,6 +18,7 @@ export function PeriodSwitcher({
   nextLabel,
   view,
   className,
+  compact = false,
 }: PeriodSwitcherProps) {
   const showingNext = view === "next" && !!nextLabel;
   const label = showingNext ? nextLabel! : currentLabel;
@@ -23,7 +26,7 @@ export function PeriodSwitcher({
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-0.5 rounded-full bg-white/60 p-0.5 backdrop-blur",
+        "inline-flex max-w-full items-center gap-0.5 rounded-full bg-white/60 p-0.5 backdrop-blur",
         className,
       )}
       role="group"
@@ -32,20 +35,30 @@ export function PeriodSwitcher({
       {showingNext ? (
         <Link
           href="/app"
-          className="flex size-8 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-white/80"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-white/80"
           aria-label="Huidige periode"
         >
           <ChevronLeft className="size-4" aria-hidden />
         </Link>
       ) : (
-        <span className="size-8" aria-hidden />
+        <span className="size-8 shrink-0" aria-hidden />
       )}
 
-      <div className="flex min-w-0 flex-col items-center px-1 py-1 text-center">
+      <div
+        className={cn(
+          "flex min-w-0 flex-col items-center px-1 py-1 text-center",
+          compact ? "max-w-[10.5rem]" : "max-w-[11rem]",
+        )}
+      >
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
           {showingNext ? "Volgende periode" : "Deze periode"}
         </p>
-        <p className="max-w-[9.5rem] truncate text-[11px] font-medium text-slate-600">
+        <p
+          className={cn(
+            "truncate font-medium text-slate-700",
+            compact ? "text-[11px]" : "text-xs",
+          )}
+        >
           {label}
         </p>
       </div>
@@ -53,15 +66,13 @@ export function PeriodSwitcher({
       {nextLabel && !showingNext ? (
         <Link
           href="/app?periode=volgende"
-          className="flex size-8 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-white/80"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-white/80"
           aria-label="Volgende periode"
         >
           <ChevronRight className="size-4" aria-hidden />
         </Link>
-      ) : showingNext ? (
-        <span className="size-8" aria-hidden />
       ) : (
-        <span className="size-8" aria-hidden />
+        <span className="size-8 shrink-0" aria-hidden />
       )}
     </div>
   );
@@ -72,5 +83,5 @@ export function periodRangeLabel(
   startsOn: string | null | undefined,
   endsOn: string | null | undefined,
 ): string {
-  return formatDateRangeNL(startsOn, endsOn);
+  return formatDateRangeShortNL(startsOn, endsOn);
 }

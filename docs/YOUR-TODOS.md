@@ -19,7 +19,7 @@ Mark items `[x]` as you finish them. Detailed click-by-click steps: [phase-1-set
 
 ## Phase 1 — Live shell on convix.cloud
 
-Goal: open `https://convix.cloud` on your phone, install as PWA, sign in with Google.
+Goal: open `https://convix.cloud` on your phone, install as PWA, sign in with e-mail.
 
 ### A. GitHub — You
 
@@ -30,25 +30,23 @@ Goal: open `https://convix.cloud` on your phone, install as PWA, sign in with Go
 
 ### B. Supabase — You
 
-- [ ] Create project `convix-prod` (EU region recommended)
-- [ ] Save DB password in password manager
-- [ ] Copy Project URL → will become `NEXT_PUBLIC_SUPABASE_URL`
-- [ ] Copy **anon** key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- [ ] Copy **service_role** key → `SUPABASE_SERVICE_ROLE_KEY` (never share / never commit)
-- [ ] Run SQL migration: `supabase/migrations/20250923000000_init.sql` in SQL Editor
+- [x] Create project `convix-prod` (EU region recommended)
+- [x] Save DB password in password manager
+- [x] Copy Project URL → will become `NEXT_PUBLIC_SUPABASE_URL`
+- [x] Copy **anon** key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- [x] Copy **service_role** key → `SUPABASE_SERVICE_ROLE_KEY` (never share / never commit)
+- [x] Run SQL migration: `supabase/migrations/20250923000000_init.sql` in SQL Editor
 - [ ] Auth → URL config: Site URL + redirect URLs (`localhost` + `https://convix.cloud/auth/callback`)
 
-### C. Google Cloud OAuth — You
+### C. E-mail login — You
 
-- [ ] Create/select Google Cloud project
-- [ ] Configure OAuth consent screen (app name **Convix**)
-- [ ] Create OAuth Client ID (Web application)
-- [ ] Authorized redirect URI = `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`
-- [ ] Paste Client ID + Secret into Supabase → Auth → Google → Enable
+- [ ] Supabase → Authentication → Providers → **Email** → Enabled
+- [ ] Voor lokaal testen: **Confirm email** uitzetten (anders moet je elke signup bevestigen)
+- [ ] (Optioneel later) Google OAuth toevoegen — niet nodig voor V1
 
 ### D. Vercel — You
 
-- [ ] Import GitHub `convix` repo into Vercel
+- [ ] Import GitHub `convix-app` repo into Vercel
 - [ ] Set env vars (Production + Preview):
 
   | Name | From |
@@ -73,7 +71,7 @@ Goal: open `https://convix.cloud` on your phone, install as PWA, sign in with Go
 - [ ] Android: Install app / Add to Home screen
 - [ ] iOS Safari: Share → Add to Home Screen
 - [ ] Confirm standalone icon opens Convix
-- [ ] Google login works on phone
+- [ ] Email login works on phone
 - [ ] Session survives closing and reopening the installed app
 
 ### Phase 1 — Done in code
@@ -89,11 +87,11 @@ Goal: open `https://convix.cloud` on your phone, install as PWA, sign in with Go
 
 ## Phase 2 — Authentication & user foundation
 
-Goal: Google login creates an isolated user profile; unauthenticated users cannot reach `/app`.
+Goal: email login creates an isolated user profile; unauthenticated users cannot reach `/app`.
 
 ### You (depends on Phase 1 B–C)
 
-- [ ] Google provider enabled in Supabase (see Phase 1 C)
+- [ ] Email provider enabled in Supabase (Confirm email uit voor lokaal)
 - [ ] Test login on production URL after deploy
 - [ ] Confirm a row appears in Supabase → Table Editor → `profiles` after first login
 
@@ -101,7 +99,7 @@ Goal: Google login creates an isolated user profile; unauthenticated users canno
 
 - [x] Supabase browser + server clients (`lib/supabase/*`)
 - [x] Session middleware protecting `/app/*`
-- [x] Google OAuth sign-in / sign-out actions
+- [x] Email/password sign-in / sign-up / sign-out
 - [x] Auth callback → onboarding or dashboard
 - [x] `profiles` table + auto-create trigger on signup
 - [x] Onboarding redirect when profile incomplete
@@ -376,10 +374,10 @@ Use this space while you work:
 
 1. GitHub push  
 2. Supabase project + SQL migration  
-3. Google OAuth → Supabase  
+3. Email auth in Supabase (Confirm email uit voor lokaal)  
 4. Vercel + env vars  
 5. DNS `convix.cloud`  
-6. Phone PWA + Google login  
+6. Phone PWA + email login  
 7. Onboarding in the app  
 
 When Phase 1 checkboxes above are done, tell Cursor — we can verify Phase 2 live and continue with any gaps.

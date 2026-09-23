@@ -86,6 +86,7 @@ export async function createQuickExpense(input: {
 
     revalidatePath("/app");
     revalidatePath("/app/timeline");
+    revalidatePath("/app/uitgaand");
     revalidatePath("/app/budgets");
     revalidatePath("/app/expenses/new");
     return ok({ id: data.id });

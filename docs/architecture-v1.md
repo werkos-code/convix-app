@@ -195,7 +195,7 @@ flowchart TB
 
 - **Spendable pool accounts:** checking (+ optionally “other”); **exclude** dedicated savings accounts from Free Spendable starting cash (savings goals track reserved wealth separately). *Decision to approve: see §24.*
 - **Starting available (period):** sum of confirmed `actual_cents` on spendable accounts at period open (or onboarding).
-- **Income in period:** sum of income obligations that are **settled or still expected** in this period (expected unpaid income counts; failed income does not until re-planned).
+- **Income in period:** planned/settled income obligations for display and Binnenkort. **Unpaid expected income does not inflate Free Spendable** — cash only rises when income is settled (ledger) or included in a confirmed bank balance.
 - **Reserved variable budgets:** sum over categories of `max(0, allocated − spent_assigned)` for the open period. Spent assigned = sum of actual expense ledger events in category. Overspend does **not** create negative reserve (already spent extra reduces Free Spendable via the expense itself).
 - **Future fixed / Klarna / debt / savings obligations:** sum of obligations in this period with status in (`planned`, `due`, `partially_paid`, `returned_open`) of their **remaining_open_cents**.
 - **Already paid:** settled obligations do not reserve again; their cash left via ledger events already reflected in… wait — **important:** because starting balance is **actual bank balance**, past payments already reduced the bank. Therefore:
@@ -207,7 +207,7 @@ flowchart TB
 Two operating modes:
 
 1. **At period start (just confirmed):**  
-   `FS = actual_available − open_future_obligations_remaining − remaining_budget_allocations + expected_future_income_not_yet_received`
+   `FS = actual_available − open_future_obligations_remaining − remaining_budget_allocations`
 
 2. **During the period after expenses:**  
    Actual expenses already reduced the real bank, but we may not re-confirm balance daily. Therefore maintain:
@@ -226,10 +226,11 @@ Then:
 ```
 FreeSpendable =
   tracked_cash
-  + expected_income_not_yet_received
   − remaining_open_obligations_this_period   // fixed, klarna, debt, savings due
   − remaining_unspent_budget_allocations      // reserved, not yet spent
 ```
+
+Unpaid expected income is shown in Binnenkort / Inkomen, not added to Free Spendable.
 
 **Already-paid expenses are not deducted twice:** they reduce `tracked_cash` once via ledger; they reduce remaining budget reserve; they do **not** also appear in open obligations.
 
@@ -621,7 +622,7 @@ flowchart LR
 | Salary day | Profile field default 24 | Spec says 24; configurability is cheap insurance |
 | Timezone | `Europe/Amsterdam` | User context; consistent “today” |
 | FS cash basis | Checking (+ other), exclude savings accounts | Aligns with “savings leave spendable wealth” |
-| Income in FS | Include expected unpaid income in period; at period start after balance confirm, salary usually already in bank → don’t double-count (income obligation auto-settled on confirm if user says salary received) | Prevents double salary |
+| Income in FS | Unpaid expected income does **not** inflate Free Spendable. Cash rises only via settled income ledger events or a confirmed bank balance that already includes salary. Planned income stays in Binnenkort. | Saldo = current reality; no phantom spendable |
 | Obligation materialization | Hybrid current+next | Settlement/refund needs stable IDs |
 | Joint account | Fixed expense only | Per spec |
 | Annual expenses | Full amount in due period | Per spec |
@@ -655,7 +656,7 @@ Approve or amend each item before implementation:
 - [ ] EUR cents-only in V1
 - [ ] Salary day default 24, stored on profile (editable)
 - [ ] Timezone default `Europe/Amsterdam`
-- [ ] Free Spendable formula as in §4 (tracked_cash − open obligations − remaining budget reserves + expected unpaid income), with anti-double-count rules
+- [ ] Free Spendable formula as in §4 (tracked_cash − open obligations − remaining budget reserves), with anti-double-count rules; unpaid income not added
 - [ ] Savings accounts excluded from FS cash basis; savings goals reduce spendable on contribution
 - [ ] Hybrid obligation materialization (current + next + unsettled)
 - [ ] Obligation/ledger state machine including `returned_open`

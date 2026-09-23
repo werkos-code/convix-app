@@ -2,17 +2,17 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { RotateCcw, CheckCircle2 } from "lucide-react";
+import { RotateCcw, Check } from "lucide-react";
 
 import {
   registerRefund,
   settleObligation,
 } from "@/app/actions/obligations";
-import { Button } from "@/components/ui/button";
+import { formatDateNL } from "@/lib/dates/format";
 import { formatEuro, type Cents } from "@/lib/money/cents";
 import type { TimelineFilter } from "@/components/timeline/timeline-filters";
 import type { TimelineItemStatus } from "@/components/timeline/timeline-item";
-import { TimelineItem } from "@/components/timeline/timeline-item";
+import { cn } from "@/lib/utils";
 
 export type TimelineEntry = {
   id: string;
@@ -21,25 +21,44 @@ export type TimelineEntry = {
   amountCents: Cents;
   status: TimelineItemStatus;
   filterKeys: TimelineFilter[];
-  /** When set, this row can be settled and/or refunded */
+  /** When set, this row can be settled */
   obligationId?: string;
+  /** Allow Terugboeking only while the linked obligation is still settled */
+  canRefund?: boolean;
+};
+
+const statusStyles: Record<
+  TimelineItemStatus,
+  { label: string; className: string }
+> = {
+  actual: {
+    label: "Werkelijk",
+    className: "bg-emerald-50 text-emerald-800",
+  },
+  planned: {
+    label: "Gepland",
+    className: "bg-slate-100 text-slate-600",
+  },
+  returned: {
+    label: "Nog te betalen",
+    className: "bg-amber-50 text-amber-800",
+  },
+  settled: {
+    label: "Afgerond",
+    className: "bg-accent-soft text-accent",
+  },
 };
 
 export function TimelineRow({ entry }: { entry: TimelineEntry }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [showRefund, setShowRefund] = useState(false);
-  const [refundAmount, setRefundAmount] = useState(
-    (Math.abs(entry.amountCents) / 100).toFixed(2).replace(".", ","),
-  );
 
   const canSettle =
     !!entry.obligationId &&
     (entry.status === "planned" || entry.status === "returned");
-  const canRefund =
-    !!entry.obligationId &&
-    (entry.status === "settled" || entry.status === "actual");
+  const canRefund = Boolean(entry.canRefund && entry.obligationId);
+  const badge = statusStyles[entry.status];
 
   function onSettle() {
     if (!entry.obligationId) return;
@@ -59,94 +78,85 @@ export function TimelineRow({ entry }: { entry: TimelineEntry }) {
   function onRefund() {
     if (!entry.obligationId) return;
     setError(null);
+    const amountEuros = (Math.abs(entry.amountCents) / 100)
+      .toFixed(2)
+      .replace(".", ",");
     startTransition(async () => {
       const result = await registerRefund({
         obligationId: entry.obligationId!,
-        amountEuros: refundAmount,
+        amountEuros,
       });
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      setShowRefund(false);
       router.refresh();
     });
   }
 
   return (
     <div className="border-b border-slate-100/80 last:border-0">
-      <TimelineItem
-        date={entry.date}
-        name={entry.name}
-        amountCents={entry.amountCents}
-        status={entry.status}
-        className="px-2"
-      />
-
-      {(canSettle || canRefund) && (
-        <div className="flex flex-wrap items-center gap-2 px-2 pb-3">
-          {canSettle && (
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              disabled={pending}
-              onClick={onSettle}
+      <div className="flex min-h-14 items-center gap-2 px-3 py-3 sm:gap-3 sm:px-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate text-sm font-medium text-slate-900">
+              {entry.name}
+            </p>
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[11px] font-medium",
+                badge.className,
+              )}
             >
-              <CheckCircle2 className="size-4" aria-hidden />
-              Betaald
-            </Button>
-          )}
-          {canRefund && (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={pending}
-              onClick={() => setShowRefund((v) => !v)}
-            >
-              <RotateCcw className="size-4" aria-hidden />
-              Terugboeking
-            </Button>
-          )}
+              {badge.label}
+            </span>
+          </div>
+          <p className="mt-0.5 text-xs text-slate-500">
+            {formatDateNL(entry.date)}
+          </p>
         </div>
-      )}
 
-      {showRefund && canRefund && (
-        <div className="mx-2 mb-3 flex flex-col gap-2 rounded-2xl bg-white/60 p-3">
-          <p className="text-xs text-slate-500">
-            Een terugboeking heropent de verplichting — die verdwijnt niet
-            automatisch.
-          </p>
-          <label className="text-xs font-medium text-slate-600">
-            Bedrag
-            <input
-              className="mt-1 min-h-11 w-full rounded-xl border border-white/70 bg-white/80 px-3 text-sm"
-              inputMode="decimal"
-              value={refundAmount}
-              onChange={(e) => setRefundAmount(e.target.value)}
-            />
-          </label>
-          <p className="text-[11px] text-slate-400">
-            Voorstel: {formatEuro(Math.abs(entry.amountCents))}
-          </p>
-          <Button
+        <p
+          className={cn(
+            "shrink-0 tabular-nums text-sm font-semibold",
+            entry.amountCents < 0 ? "text-slate-900" : "text-emerald-700",
+          )}
+        >
+          {formatEuro(entry.amountCents, { sign: true })}
+        </p>
+
+        {canSettle ? (
+          <button
             type="button"
-            size="sm"
+            disabled={pending}
+            onClick={onSettle}
+            aria-label="Markeer als betaald"
+            title="Betaald"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50"
+          >
+            <Check className="size-4" strokeWidth={2.5} aria-hidden />
+          </button>
+        ) : null}
+
+        {canRefund ? (
+          <button
+            type="button"
             disabled={pending}
             onClick={onRefund}
-            className="self-start"
+            aria-label="Terugboeking"
+            title="Terugboeking"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600 transition-colors hover:bg-rose-100 disabled:opacity-50"
           >
-            {pending ? "Opslaan…" : "Terugboeking opslaan"}
-          </Button>
-        </div>
-      )}
+            <RotateCcw className="size-3.5" strokeWidth={2.5} aria-hidden />
+          </button>
+        ) : null}
+      </div>
 
-      {error && (
-        <p className="px-2 pb-2 text-xs text-red-600" role="alert">
+      {error ? (
+        <p className="px-3 pb-2 text-xs text-rose-600 sm:px-4" role="alert">
           {error}
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

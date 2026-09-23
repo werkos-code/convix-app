@@ -11,6 +11,7 @@ import { isNextControlFlowError } from "@/lib/auth/control-flow";
 import { requireUser } from "@/lib/auth/require-user";
 import { formatDateRangeNL } from "@/lib/dates/format";
 import { ensureOpenPeriod } from "@/lib/periods/ensure-open-period";
+import { todayInTimezone } from "@/lib/periods/salary-period";
 
 export const metadata = {
   title: "Tijdlijn",
@@ -22,7 +23,11 @@ function statusFromObligation(status: string): TimelineItemStatus {
   return "planned";
 }
 
-function filtersForKind(kind: string, type?: string): TimelineFilter[] {
+function filtersForKind(
+  kind: string,
+  type?: string,
+  options?: { returnedOpen?: boolean },
+): TimelineFilter[] {
   const keys: TimelineFilter[] = [];
   if (kind === "income" || type === "income") keys.push("Inkomsten");
   if (
@@ -39,6 +44,10 @@ function filtersForKind(kind: string, type?: string): TimelineFilter[] {
   }
   if (kind === "debt_payment" || type === "debt_payment") keys.push("Schuld");
   if (type === "refund_return") keys.push("Uitgaven");
+  /** Failed debit / returned payment is still owed → Schuld */
+  if (options?.returnedOpen && kind !== "income") {
+    if (!keys.includes("Schuld")) keys.push("Schuld");
+  }
   return keys;
 }
 
@@ -51,11 +60,13 @@ export default async function TimelinePage() {
 
   let entries: TimelineEntry[] = [];
   let periodLabel: string | null = null;
+  let today: string | null = null;
   let loadError: string | null = null;
 
   try {
-    const { period } = await ensureOpenPeriod(supabase, user.id);
+    const { period, profile } = await ensureOpenPeriod(supabase, user.id);
     periodLabel = formatDateRangeNL(period.starts_on, period.ends_on);
+    today = todayInTimezone(profile.timezone);
 
     const [ledgerRes, obligationsRes] = await Promise.all([
       supabase
@@ -75,30 +86,43 @@ export default async function TimelinePage() {
     if (ledgerRes.error) throw ledgerRes.error;
     if (obligationsRes.error) throw obligationsRes.error;
 
-    const ledgerEntries: TimelineEntry[] = (ledgerRes.data ?? []).map((e) => {
-      const sign =
-        e.type === "income" || e.type === "refund_return" ? 1 : -1;
-      const filterKeys = filtersForKind("", e.type);
-      return {
-        id: `ledger-${e.id}`,
-        date: e.occurred_on,
-        name: e.name,
-        amountCents: sign * Math.abs(e.amount_cents),
-        status: "actual" as const,
-        filterKeys: filterKeys.length
-          ? filterKeys
-          : (["Uitgaven"] as TimelineFilter[]),
-        obligationId: e.obligation_id ?? undefined,
-      };
-    });
+    const obligations = obligationsRes.data ?? [];
+    const oblById = new Map(obligations.map((o) => [o.id, o]));
 
-    const obligationEntries: TimelineEntry[] = (obligationsRes.data ?? [])
+    const ledgerEntries: TimelineEntry[] = (ledgerRes.data ?? [])
+      .filter(
+        (e) => e.type !== "refund_return" && e.type !== "balance_adjustment",
+      )
+      .map((e) => {
+        const sign = e.type === "income" ? 1 : -1;
+        const linked = e.obligation_id
+          ? oblById.get(e.obligation_id)
+          : undefined;
+        const filterKeys = filtersForKind("", e.type);
+        const canRefund =
+          Boolean(e.obligation_id) && linked?.status === "settled";
+        return {
+          id: `ledger-${e.id}`,
+          date: e.occurred_on,
+          name: e.name,
+          amountCents: sign * Math.abs(e.amount_cents),
+          status: "actual" as const,
+          filterKeys: filterKeys.length
+            ? filterKeys
+            : (["Uitgaven"] as TimelineFilter[]),
+          obligationId: e.obligation_id ?? undefined,
+          canRefund,
+        };
+      });
+
+    const obligationEntries: TimelineEntry[] = obligations
       .filter((o) => statusIsPlanned(o.status))
       .map((o) => {
         const isIncome = o.kind === "income";
+        const returnedOpen = o.status === "returned_open";
         const filterKeys: TimelineFilter[] = [
           "Gepland",
-          ...filtersForKind(o.kind),
+          ...filtersForKind(o.kind, undefined, { returnedOpen }),
         ];
         return {
           id: `obl-${o.id}`,
@@ -123,17 +147,17 @@ export default async function TimelinePage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader
-        title="Tijdlijn"
-        description="Werkelijke en geplande cashflow — filter en markeer als betaald"
-        icon={LayoutList}
-      />
+      <PageHeader title="Tijdlijn" icon={LayoutList} />
       {loadError ? (
         <p className="glass-chip rounded-2xl px-4 py-3 text-sm text-slate-600">
           {loadError}
         </p>
       ) : null}
-      <TimelineClient entries={entries} periodLabel={periodLabel} />
+      <TimelineClient
+        entries={entries}
+        periodLabel={periodLabel}
+        today={today}
+      />
     </div>
   );
 }

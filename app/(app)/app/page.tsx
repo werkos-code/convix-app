@@ -9,7 +9,8 @@ import {
   Wallet,
 } from "lucide-react";
 
-import { ConvixWordmark } from "@/components/brand/logo";
+import { ConvixMark } from "@/components/brand/logo";
+import { DebtsSection } from "@/components/dashboard/debts-section";
 import { PeriodSwitcher } from "@/components/dashboard/period-switcher";
 import { UpcomingSection } from "@/components/dashboard/upcoming-section";
 import { WarningBanner } from "@/components/dashboard/warning-banner";
@@ -19,7 +20,7 @@ import {
   loadDashboardData,
   type DashboardPeriodView,
 } from "@/lib/data/dashboard";
-import { formatDateRangeNL } from "@/lib/dates/format";
+import { formatDateRangeShortNL } from "@/lib/dates/format";
 import { formatEuro, type Cents } from "@/lib/money/cents";
 import { cn } from "@/lib/utils";
 
@@ -68,43 +69,74 @@ export default async function DashboardPage({
   const periodView: DashboardPeriodView =
     periodeParam === "volgende" ? "next" : "current";
 
-  const { user } = await requireUser();
+  const { user, supabase } = await requireUser();
   const data = await loadDashboardData(user.id, { periodView });
   const b = data.breakdown;
 
+  const [{ data: debtRows }, { data: ruleRows }] = await Promise.all([
+    supabase
+      .from("debts")
+      .select("id, name, outstanding_cents")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("debt_payment_rules")
+      .select("debt_id, amount_cents")
+      .eq("user_id", user.id)
+      .eq("is_active", true),
+  ]);
+
+  const monthlyByDebt = new Map<string, number>();
+  for (const r of ruleRows ?? []) {
+    monthlyByDebt.set(
+      r.debt_id,
+      (monthlyByDebt.get(r.debt_id) ?? 0) + r.amount_cents,
+    );
+  }
+
+  const debts = (debtRows ?? []).map((d) => ({
+    id: d.id,
+    name: d.name,
+    outstandingCents: d.outstanding_cents as Cents,
+    monthlyCents: (monthlyByDebt.get(d.id) ?? 0) as Cents,
+  }));
+
   const currentRange = data.openPeriod
-    ? formatDateRangeNL(data.openPeriod.starts_on, data.openPeriod.ends_on)
+    ? formatDateRangeShortNL(data.openPeriod.starts_on, data.openPeriod.ends_on)
     : data.period
-      ? formatDateRangeNL(data.period.starts_on, data.period.ends_on)
+      ? formatDateRangeShortNL(data.period.starts_on, data.period.ends_on)
       : "";
   const nextRange = data.nextPeriod
-    ? formatDateRangeNL(data.nextPeriod.starts_on, data.nextPeriod.ends_on)
+    ? formatDateRangeShortNL(data.nextPeriod.starts_on, data.nextPeriod.ends_on)
     : null;
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex items-center justify-between gap-3 pt-1">
-        <Link href="/app" className="min-w-0" aria-label="Convix home">
-          <ConvixWordmark markClassName="size-8" className="gap-2" />
+      <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 pt-1">
+        <Link href="/app" className="justify-self-start" aria-label="Convix home">
+          <ConvixMark className="size-8" />
         </Link>
+        {currentRange ? (
+          <div className="flex justify-center justify-self-center">
+            <PeriodSwitcher
+              currentLabel={currentRange}
+              nextLabel={nextRange}
+              view={data.periodView}
+              compact
+            />
+          </div>
+        ) : (
+          <span />
+        )}
         <Link
           href="/app/settings"
-          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white/70 text-slate-700 shadow-sm ring-1 ring-white/80 backdrop-blur transition-colors hover:bg-white hover:text-accent"
+          className="flex size-11 shrink-0 items-center justify-center justify-self-end rounded-full bg-white/70 text-slate-700 shadow-sm ring-1 ring-white/80 backdrop-blur transition-colors hover:bg-white hover:text-accent"
           aria-label="Instellingen"
         >
           <Settings className="size-5" strokeWidth={1.75} aria-hidden />
         </Link>
       </header>
-
-      {currentRange ? (
-        <div className="flex justify-center">
-          <PeriodSwitcher
-            currentLabel={currentRange}
-            nextLabel={nextRange}
-            view={data.periodView}
-          />
-        </div>
-      ) : null}
 
       {data.error ? (
         <p className="glass-chip rounded-2xl px-4 py-3 text-sm text-slate-600">
@@ -145,7 +177,9 @@ export default async function DashboardPage({
         />
         <StatChip
           label="Uitgaven"
-          amountCents={b.variableSpentCents + b.fixedOpenCents}
+          amountCents={
+            (b.openObligationsCents + b.variableSpentCents) as Cents
+          }
           icon={ArrowUpRight}
           tone="expense"
         />
@@ -168,7 +202,7 @@ export default async function DashboardPage({
         <section className="glass-card overflow-hidden rounded-[1.75rem]">
           <div className="flex items-center justify-between px-5 pt-5">
             <h2 className="text-sm font-bold text-slate-900">Budgetten</h2>
-            <Link href="/app/budgets" className="text-xs font-semibold text-accent">
+            <Link href="/app/uitgaand?tab=budgetten" className="text-xs font-semibold text-accent">
               Alles
             </Link>
           </div>
@@ -208,6 +242,8 @@ export default async function DashboardPage({
           </ul>
         </section>
       )}
+
+      <DebtsSection debts={debts} />
     </div>
   );
 }

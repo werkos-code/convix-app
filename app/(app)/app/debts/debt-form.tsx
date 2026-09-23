@@ -2,21 +2,30 @@
 
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import { createDebt } from "@/app/actions/debts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function DebtForm() {
+export function DebtForm({ expandByDefault = false }: { expandByDefault?: boolean }) {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
+  const [open, setOpen] = useState(expandByDefault);
   const [name, setName] = useState("");
   const [outstanding, setOutstanding] = useState("");
   const [payment, setPayment] = useState("");
   const [day, setDay] = useState("1");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!expandByDefault) return;
+    window.requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [expandByDefault]);
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -35,12 +44,30 @@ export function DebtForm() {
       setName("");
       setOutstanding("");
       setPayment("");
+      setOpen(false);
+      router.replace("/app/uitgaand?tab=schulden");
       router.refresh();
     });
   }
 
+  if (!open) {
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full"
+        onClick={() => setOpen(true)}
+      >
+        <Plus className="size-5" aria-hidden />
+        Schuld toevoegen
+      </Button>
+    );
+  }
+
   return (
     <form
+      ref={formRef}
+      id="nieuwe-schuld"
       onSubmit={onSubmit}
       className="glass-card flex flex-col gap-4 rounded-[1.75rem] p-5"
     >
@@ -56,6 +83,7 @@ export function DebtForm() {
           onChange={(e) => setName(e.target.value)}
           placeholder="DUO, creditcard…"
           required
+          autoFocus={expandByDefault}
         />
       </div>
       <div className="flex flex-col gap-2">
@@ -103,9 +131,21 @@ export function DebtForm() {
           {error}
         </p>
       )}
-      <Button type="submit" disabled={pending}>
-        {pending ? "Opslaan…" : "Schuld toevoegen"}
-      </Button>
+      <div className="flex flex-col gap-2">
+        <Button type="submit" disabled={pending}>
+          {pending ? "Opslaan…" : "Schuld toevoegen"}
+        </Button>
+        {!expandByDefault ? (
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={pending}
+            onClick={() => setOpen(false)}
+          >
+            Annuleren
+          </Button>
+        ) : null}
+      </div>
     </form>
   );
 }

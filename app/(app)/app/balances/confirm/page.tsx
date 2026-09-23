@@ -39,11 +39,7 @@ export default async function ConfirmBalancesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Saldi bevestigen"
-        description="Voer in wat je daadwerkelijk op elke rekening ziet voor de open periode."
-        icon={Scale}
-      />
+      <PageHeader title="Saldi bevestigen" icon={Scale} />
 
       {error ? (
         <div className="flex flex-col gap-4">

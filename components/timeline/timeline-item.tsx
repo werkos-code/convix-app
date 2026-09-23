@@ -29,8 +29,8 @@ const statusStyles: Record<
     className: "bg-slate-100 text-slate-600",
   },
   returned: {
-    label: "Teruggeboekt",
-    className: "bg-sky-50 text-sky-800",
+    label: "Nog te betalen",
+    className: "bg-amber-50 text-amber-800",
   },
   settled: {
     label: "Afgerond",

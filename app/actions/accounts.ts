@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { confirmPeriodFromAccountBalances } from "@/lib/accounts/confirm-period-balances";
 import { requireUser } from "@/lib/auth/require-user";
+import { ensureOpenPeriod } from "@/lib/periods/ensure-open-period";
 import { accountSchema } from "@/lib/validations/schemas";
 import type { Account } from "@/lib/types/domain";
 import { fail, ok, requireCents, type ActionResult } from "./_result";
@@ -58,7 +60,9 @@ export async function createAccount(input: {
       return fail(parsed.error.issues[0]?.message ?? "Invalid account");
     }
 
-    const balanceCents = requireCents(parsed.data.balanceEuros, "Balance");
+    const balanceCents = requireCents(parsed.data.balanceEuros, "Saldo", {
+      allowNegative: true,
+    });
     const { user, supabase } = await requireUser();
 
     const { count } = await supabase
@@ -112,7 +116,8 @@ export async function updateAccount(input: {
     if (input.balanceEuros != null) {
       patch.last_confirmed_balance_cents = requireCents(
         input.balanceEuros,
-        "Balance",
+        "Saldo",
+        { allowNegative: true },
       );
       patch.last_confirmed_at = new Date().toISOString();
     }
@@ -127,8 +132,25 @@ export async function updateAccount(input: {
 
     if (error) return fail(error.message);
 
+    // Re-baseline the open period cash on the latest account balances so
+    // Free Spendable uses −98,17 (etc.) instead of a stale period snapshot + old ledger.
+    if (input.balanceEuros != null) {
+      try {
+        const { period } = await ensureOpenPeriod(supabase, user.id);
+        await confirmPeriodFromAccountBalances(
+          supabase,
+          user.id,
+          period.id,
+          { zeroCarryOver: true },
+        );
+      } catch {
+        // Account update already succeeded; period sync is best-effort.
+      }
+    }
+
     revalidatePath("/app");
     revalidatePath("/app/accounts");
+    revalidatePath("/app/timeline");
     return ok({ id: data.id });
   } catch (e) {
     return fail(e instanceof Error ? e.message : "Failed to update account");

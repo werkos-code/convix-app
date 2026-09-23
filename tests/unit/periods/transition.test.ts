@@ -100,7 +100,7 @@ describe("Free Spendable — debt + refund cash effect", () => {
     expect(result.freeSpendableCents).toBe(eurosToCents(458));
   });
 
-  it("refund increases tracked cash", () => {
+  it("refund does not invent cash — saldo stays the basis", () => {
     const result = computeFreeSpendable({
       lastConfirmedActualCents: eurosToCents(100),
       ledgerSinceConfirm: [

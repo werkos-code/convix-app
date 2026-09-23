@@ -45,11 +45,7 @@ export default async function AccountsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Rekeningen"
-        description="Alleen persoonlijke rekeningen — geen banksync in V1. Betaal-/overig tellen mee voor Vrij besteedbaar; spaarrekeningen apart."
-        icon={Landmark}
-      />
+      <PageHeader title="Rekeningen" icon={Landmark} />
 
       {error ? (
         <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">

@@ -17,17 +17,20 @@ const OPEN_STATUSES: ObligationStatus[] = [
 
 const CASH_OUT_TYPES = new Set([
   "expense",
-  "payment",
-  "savings_contribution",
-  "debt_payment",
 ]);
 
-const CASH_IN_TYPES = new Set(["income", "refund_return"]);
+/** Explicit signed adjustments only — not income/payment/refund settlements. */
+const CASH_ADJUST_TYPES = new Set(["balance_adjustment"]);
 
 export interface CalcInput {
   /** Confirmed actual available on spendable accounts at last confirm */
   lastConfirmedActualCents: Cents;
-  /** Ledger events since last balance confirmation */
+  /**
+   * Ledger since last balance confirmation.
+   * Only `expense` (and `balance_adjustment`) move tracked cash.
+   * Betaald / terugboeking on obligations are status only — bank saldo is
+   * updated when you edit your account balance.
+   */
   ledgerSinceConfirm: Pick<LedgerEvent, "type" | "amount_cents" | "budget_category_id">[];
   /** Obligations belonging to the open period */
   periodObligations: Pick<
@@ -37,8 +40,8 @@ export interface CalcInput {
   /** Budget allocations for the period */
   periodBudgets: Pick<PeriodBudget, "category_id" | "allocated_cents">[];
   /**
-   * When true, income obligations that are still open count as expected income.
-   * Settled income is already in tracked cash via ledger (or bank confirm).
+   * When true, open income obligations inflate Free Spendable.
+   * Default false: bank saldo is current reality.
    */
   includeExpectedIncome?: boolean;
 }
@@ -57,9 +60,10 @@ function sumOpenByKinds(
 }
 
 /**
- * Tracked cash ≈ last confirmed bank balance adjusted by ledger since confirm.
- * Refunds increase cash; expenses/payments/savings/debt decrease it.
- * balance_adjustment uses signed amount_cents as-is.
+ * Tracked cash = confirmed bank saldo, plus snelle uitgaven sinds die bevestiging.
+ * Obligation settlements (Betaald / Terugboeking / inkomen) do NOT move cash —
+ * those only change open obligations; update your account balance when money
+ * actually hits or leaves the bank.
  */
 export function computeTrackedCash(
   lastConfirmedActualCents: Cents,
@@ -67,13 +71,10 @@ export function computeTrackedCash(
 ): Cents {
   let cash = lastConfirmedActualCents;
   for (const e of ledgerSinceConfirm) {
-    const amount = Math.abs(e.amount_cents);
-    if (e.type === "balance_adjustment") {
+    if (CASH_ADJUST_TYPES.has(e.type)) {
       cash += e.amount_cents;
-    } else if (CASH_IN_TYPES.has(e.type)) {
-      cash += amount;
     } else if (CASH_OUT_TYPES.has(e.type)) {
-      cash -= amount;
+      cash -= Math.abs(e.amount_cents);
     }
   }
   return cash;
@@ -119,16 +120,15 @@ export function computeRemainingBudgetReserve(
 
 /**
  * Free Spendable =
- *   tracked_cash
- *   + expected_income_not_yet_received
+ *   tracked_cash                          // confirmed saldo ± snelle uitgaven
  *   − remaining_open_obligations (fixed, klarna, debt, savings — not income)
  *   − remaining_unspent_budget_allocations
  *
- * Already-paid expenses are not deducted twice: they reduce tracked_cash
- * and reduce budget reserve; they do not appear in open obligations.
+ * Confirmed bank saldo is the source of truth. Marking Betaald / Terugboeking
+ * does not invent cash — update your account balance when money really moves.
  */
 export function computeFreeSpendable(input: CalcInput): FreeSpendableBreakdown {
-  const includeExpectedIncome = input.includeExpectedIncome ?? true;
+  const includeExpectedIncome = input.includeExpectedIncome ?? false;
 
   const trackedCashCents = computeTrackedCash(
     input.lastConfirmedActualCents,

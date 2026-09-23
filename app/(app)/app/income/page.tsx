@@ -53,17 +53,13 @@ export default async function IncomePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Inkomsten"
-        description="Terugkerende en eenmalige inkomsten — tellen mee in Free Spendable"
-        icon={Wallet}
-      />
+      <PageHeader title="Inkomsten" icon={Wallet} />
 
       <ul className="glass-card overflow-hidden rounded-[1.75rem] divide-y divide-slate-100/80">
         {rules.length === 0 ? (
           <li className="px-5 py-6 text-sm text-slate-500">
             Geen inkomstenregels. Voeg je salaris toe zodat geplande inkomsten
-            meetellen.
+            in Binnenkort verschijnen.
           </li>
         ) : (
           rules.map((r) => (

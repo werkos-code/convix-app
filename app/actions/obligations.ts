@@ -190,6 +190,7 @@ export async function settleObligation(input: {
     revalidatePath("/app");
     revalidatePath("/app/timeline");
     revalidatePath("/app/klarna");
+    revalidatePath("/app/uitgaand");
     revalidatePath("/app/savings");
     revalidatePath("/app/debts");
     return ok({
@@ -240,6 +241,18 @@ export async function registerRefund(input: {
       return fail(oblErr?.message ?? "Verplichting niet gevonden");
     }
 
+    if (obligation.status === "returned_open") {
+      return fail(
+        "Deze verplichting staat al weer open als schuld — betaal opnieuw via Betaald",
+      );
+    }
+    if (
+      obligation.status !== "settled" &&
+      obligation.status !== "partially_paid"
+    ) {
+      return fail("Alleen afgeronde betalingen kun je terugboeken");
+    }
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("timezone")
@@ -259,11 +272,20 @@ export async function registerRefund(input: {
       { type: "refund_return", amountCents },
     );
 
+    /**
+     * Expense refunds put money back (refund_return = cash in).
+     * Undoing a settled *income* must remove cash — otherwise FS double-counts
+     * (ledger income + refund_return + reopened expected income).
+     */
+    const isIncomeUndo = obligation.kind === "income";
     const { error: ledErr } = await supabase.from("ledger_events").insert({
       user_id: user.id,
-      type: "refund_return",
-      name: parsed.data.name ?? `Terugboeking: ${obligation.name}`,
-      amount_cents: amountCents,
+      type: isIncomeUndo ? "balance_adjustment" : "refund_return",
+      name: parsed.data.name ??
+        (isIncomeUndo
+          ? `Ongedaan: ${obligation.name}`
+          : `Terugboeking: ${obligation.name}`),
+      amount_cents: isIncomeUndo ? -amountCents : amountCents,
       occurred_on: occurredOn,
       account_id: obligation.account_id,
       obligation_id: obligation.id,
@@ -364,6 +386,7 @@ export async function registerRefund(input: {
     revalidatePath("/app");
     revalidatePath("/app/timeline");
     revalidatePath("/app/klarna");
+    revalidatePath("/app/uitgaand");
     revalidatePath("/app/savings");
     revalidatePath("/app/debts");
     return ok({

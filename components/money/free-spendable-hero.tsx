@@ -61,12 +61,6 @@ export function FreeSpendableHero({
         <CalendarDays className="size-3.5 text-accent" aria-hidden />
         {daysLabel}
       </p>
-      {isPreview && (
-        <p className="relative mt-3 text-xs leading-relaxed text-slate-500">
-          Vooruitblik: start vanuit wat je nu overhoudt (inclusief ongebruikt
-          budget). Wordt pas definitief na bevestiging van saldi op salarisdag.
-        </p>
-      )}
     </section>
   );
 }

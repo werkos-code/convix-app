@@ -50,11 +50,7 @@ export default async function InsightsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Inzichten"
-        description="Automatische checks op vrij besteedbaar, budgetten en aankomende betalingen"
-        icon={ChartLine}
-      />
+      <PageHeader title="Inzichten" icon={ChartLine} />
 
       {data.error ? (
         <p className="glass-chip rounded-2xl px-4 py-3 text-sm text-slate-600">

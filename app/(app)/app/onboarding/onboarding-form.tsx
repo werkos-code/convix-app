@@ -108,9 +108,12 @@ export function OnboardingForm() {
               inputMode="decimal"
               value={balance}
               onChange={(e) => setBalance(e.target.value)}
-              placeholder="0,00"
+              placeholder="0,00 of −150,00"
               required
             />
+            <p className="text-xs text-slate-500">
+              Negatief mag — roodstand / debet.
+            </p>
           </div>
         </div>
       </div>

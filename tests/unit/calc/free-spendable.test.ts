@@ -121,6 +121,96 @@ describe("carry-over", () => {
   });
 });
 
+describe("Free Spendable — saldo is current reality", () => {
+  it("does not inflate FS with unpaid expected income", () => {
+    const result = computeFreeSpendable({
+      lastConfirmedActualCents: eurosToCents(-98.17),
+      ledgerSinceConfirm: [],
+      periodObligations: [
+        {
+          kind: "income",
+          status: "returned_open",
+          remaining_open_cents: eurosToCents(2058.85),
+          amount_cents: eurosToCents(2058.85),
+        },
+        {
+          kind: "fixed_expense",
+          status: "planned",
+          remaining_open_cents: eurosToCents(318.49),
+          amount_cents: eurosToCents(318.49),
+        },
+      ],
+      periodBudgets: [],
+    });
+
+    expect(result.trackedCashCents).toBe(eurosToCents(-98.17));
+    expect(result.expectedIncomeCents).toBe(0);
+    // −98,17 − 318,49 = −416,66 (no phantom salary)
+    expect(result.freeSpendableCents).toBe(eurosToCents(-416.66));
+  });
+
+  it("can still opt in to count expected income", () => {
+    const result = computeFreeSpendable({
+      lastConfirmedActualCents: eurosToCents(-98.17),
+      ledgerSinceConfirm: [],
+      periodObligations: [
+        {
+          kind: "income",
+          status: "planned",
+          remaining_open_cents: eurosToCents(2058.85),
+          amount_cents: eurosToCents(2058.85),
+        },
+      ],
+      periodBudgets: [],
+      includeExpectedIncome: true,
+    });
+
+    expect(result.expectedIncomeCents).toBe(eurosToCents(2058.85));
+    expect(result.freeSpendableCents).toBe(eurosToCents(1960.68));
+  });
+
+  it("ignores Betaald/Terugboeking ledger for cash — saldo wins", () => {
+    const result = computeFreeSpendable({
+      lastConfirmedActualCents: eurosToCents(-98.17),
+      ledgerSinceConfirm: [
+        {
+          type: "income",
+          amount_cents: eurosToCents(2058.85),
+          budget_category_id: null,
+        },
+        {
+          type: "payment",
+          amount_cents: eurosToCents(350),
+          budget_category_id: null,
+        },
+        {
+          type: "refund_return",
+          amount_cents: eurosToCents(141.45),
+          budget_category_id: null,
+        },
+        {
+          type: "expense",
+          amount_cents: eurosToCents(10),
+          budget_category_id: null,
+        },
+      ],
+      periodObligations: [
+        {
+          kind: "fixed_expense",
+          status: "returned_open",
+          remaining_open_cents: eurosToCents(141.45),
+          amount_cents: eurosToCents(141.45),
+        },
+      ],
+      periodBudgets: [],
+    });
+
+    // Only the snelle uitgave (−10) moves cash; income/payment/refund ignored
+    expect(result.trackedCashCents).toBe(eurosToCents(-108.17));
+    expect(result.freeSpendableCents).toBe(eurosToCents(-249.62));
+  });
+});
+
 describe("budget overspend", () => {
   it("never blocks and reserve floors at 0", () => {
     const cat = "groceries";

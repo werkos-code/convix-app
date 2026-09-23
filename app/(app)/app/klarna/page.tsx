@@ -2,104 +2,128 @@ import { CreditCard } from "lucide-react";
 
 import { KlarnaForm } from "./klarna-form";
 import {
-  KlarnaPurchaseCard,
-  type KlarnaPurchaseView,
-} from "./klarna-purchase-card";
+  KlarnaInstallmentRow,
+  type KlarnaRowItem,
+} from "./klarna-installment-row";
+import { KlarnaMark } from "@/components/brand/klarna-mark";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireUser } from "@/lib/auth/require-user";
 import { formatEuro } from "@/lib/money/cents";
+import { todayInTimezone } from "@/lib/periods/salary-period";
 
 export const metadata = {
   title: "Klarna",
 };
 
-export default async function KlarnaPage() {
-  let purchases: KlarnaPurchaseView[] = [];
-  let openTotal = 0;
+const OPEN_STATUSES = new Set([
+  "planned",
+  "due",
+  "partially_paid",
+  "returned_open",
+]);
 
-  try {
-    const { user, supabase } = await requireUser();
-    const { data: purchaseRows } = await supabase
+export default async function KlarnaPage() {
+  const { user, supabase } = await requireUser();
+
+  const [{ data: purchaseRows }, { data: profile }] = await Promise.all([
+    supabase
       .from("klarna_purchases")
       .select("id, name, total_cents, plan, status, purchased_on")
       .eq("user_id", user.id)
-      .order("purchased_on", { ascending: false });
+      .order("purchased_on", { ascending: false }),
+    supabase
+      .from("profiles")
+      .select("timezone")
+      .eq("id", user.id)
+      .maybeSingle(),
+  ]);
 
-    const ids = (purchaseRows ?? []).map((p) => p.id);
-    const { data: installmentRows } =
-      ids.length > 0
-        ? await supabase
-            .from("klarna_installments")
-            .select("id, purchase_id, sequence, due_on, amount_cents, status")
-            .eq("user_id", user.id)
-            .in("purchase_id", ids)
-            .order("sequence", { ascending: true })
-        : { data: [] as Array<{
-            id: string;
-            purchase_id: string;
-            sequence: number;
-            due_on: string;
-            amount_cents: number;
-            status: string;
-          }> };
+  const today = todayInTimezone(profile?.timezone ?? "Europe/Amsterdam");
+  const ids = (purchaseRows ?? []).map((p) => p.id);
 
-    const byPurchase = new Map<string, KlarnaPurchaseView["installments"]>();
-    for (const i of installmentRows ?? []) {
-      const list = byPurchase.get(i.purchase_id) ?? [];
-      list.push({
-        id: i.id,
-        sequence: i.sequence,
-        due_on: i.due_on,
-        amount_cents: i.amount_cents,
-        status: i.status,
-      });
-      byPurchase.set(i.purchase_id, list);
-    }
+  const { data: installmentRows } =
+    ids.length > 0
+      ? await supabase
+          .from("klarna_installments")
+          .select(
+            "id, purchase_id, sequence, due_on, amount_cents, status, obligation_id",
+          )
+          .eq("user_id", user.id)
+          .in("purchase_id", ids)
+          .order("due_on", { ascending: true })
+      : { data: [] as Array<{
+          id: string;
+          purchase_id: string;
+          sequence: number;
+          due_on: string;
+          amount_cents: number;
+          status: string;
+          obligation_id: string | null;
+        }> };
 
-    purchases = (purchaseRows ?? []).map((p) => ({
-      ...p,
-      installments: byPurchase.get(p.id) ?? [],
-    }));
-
-    openTotal = purchases
-      .filter((p) => p.status === "open")
-      .flatMap((p) => p.installments)
-      .filter((i) =>
-        ["planned", "due", "partially_paid", "returned_open"].includes(
-          i.status,
-        ),
-      )
-      .reduce((sum, i) => sum + i.amount_cents, 0);
-  } catch {
-    // empty
+  const purchaseById = new Map((purchaseRows ?? []).map((p) => [p.id, p]));
+  const countByPurchase = new Map<string, number>();
+  for (const i of installmentRows ?? []) {
+    countByPurchase.set(
+      i.purchase_id,
+      (countByPurchase.get(i.purchase_id) ?? 0) + 1,
+    );
   }
+
+  const rows: KlarnaRowItem[] = (installmentRows ?? [])
+    .filter((i) => OPEN_STATUSES.has(i.status))
+    .map((i) => {
+      const purchase = purchaseById.get(i.purchase_id);
+      return {
+        installmentId: i.id,
+        purchaseId: i.purchase_id,
+        obligationId: i.obligation_id,
+        name: purchase?.name ?? "Klarna",
+        dueOn: i.due_on,
+        amountCents: i.amount_cents,
+        plan: purchase?.plan ?? "pay_in_30",
+        sequence: i.sequence,
+        installmentCount: countByPurchase.get(i.purchase_id) ?? 1,
+        purchaseStatus: purchase?.status ?? "open",
+      };
+    })
+    .sort((a, b) => (a.dueOn < b.dueOn ? -1 : a.dueOn > b.dueOn ? 1 : 0));
+
+  const openTotal = rows.reduce((sum, r) => sum + r.amountCents, 0);
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Klarna"
-        description="Betaal in 30 of in 3 — termijnen reserveren Free Spendable"
-        icon={CreditCard}
-      />
+      <PageHeader title="Klarna" icon={CreditCard} />
 
-      {openTotal > 0 && (
+      {openTotal > 0 ? (
         <p className="glass-chip rounded-2xl px-4 py-3 text-sm text-slate-600">
-          Nog openstaand:{" "}
+          Nog te betalen{" "}
           <span className="font-semibold tabular-nums text-slate-900">
             {formatEuro(openTotal)}
           </span>
         </p>
-      )}
+      ) : null}
 
       <ul className="glass-card overflow-hidden rounded-[1.75rem]">
-        {purchases.length === 0 ? (
-          <li className="px-5 py-6 text-sm text-slate-500">
-            Geen Klarna-aankopen. Voeg er een toe om termijnen in je planning te
-            zetten.
+        {rows.length === 0 ? (
+          <li className="flex flex-col items-center gap-2 px-5 py-10 text-center">
+            <div className="flex size-10 items-center justify-center rounded-full bg-[#121218]">
+              <KlarnaMark active className="text-base text-[#FFA8CD]" />
+            </div>
+            <p className="text-sm font-medium text-slate-800">
+              Geen openstaande termijnen
+            </p>
+            <p className="text-xs text-slate-500">
+              Voeg een aankoop toe om termijnen in je planning te zetten.
+            </p>
           </li>
         ) : (
-          purchases.map((p) => (
-            <KlarnaPurchaseCard key={p.id} purchase={p} />
+          rows.map((item) => (
+            <KlarnaInstallmentRow
+              key={item.installmentId}
+              item={item}
+              today={today}
+            />
           ))
         )}
       </ul>

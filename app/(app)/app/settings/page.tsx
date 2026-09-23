@@ -62,20 +62,18 @@ async function updateNotificationPrefs(
 export default async function SettingsPage() {
   let salaryDay = DEFAULT_SALARY_DAY;
   let timezone = "Europe/Amsterdam";
-  let displayName: string | null = null;
   const prefs: NotificationPreferences = { ...DEFAULT_NOTIFICATION_PREFERENCES };
 
   try {
     const { user, supabase } = await requireUser();
     const { data } = await supabase
       .from("profiles")
-      .select("salary_day, timezone, display_name")
+      .select("salary_day, timezone")
       .eq("id", user.id)
       .maybeSingle();
     if (data) {
       salaryDay = data.salary_day;
       timezone = data.timezone;
-      displayName = data.display_name;
     }
 
     const { data: prefsRow } = await supabase
@@ -103,15 +101,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Instellingen"
-        description={
-          displayName
-            ? `Ingelogd als ${displayName}`
-            : "Profiel en voorkeuren"
-        }
-        icon={Settings}
-      />
+      <PageHeader title="Instellingen" icon={Settings} />
 
       <form
         action={updateSalaryDay}

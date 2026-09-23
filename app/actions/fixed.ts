@@ -104,6 +104,7 @@ export async function createFixedExpenseRule(input: {
     await rematerializeOpenAndNext(supabase, user.id);
 
     revalidatePath("/app");
+    revalidatePath("/app/uitgaand");
     revalidatePath("/app/fixed");
     revalidatePath("/app/budgets");
     revalidatePath("/app/timeline");
@@ -146,6 +147,7 @@ export async function deactivateFixedExpenseRule(input: {
       ]);
 
     revalidatePath("/app");
+    revalidatePath("/app/uitgaand");
     revalidatePath("/app/fixed");
     revalidatePath("/app/budgets");
     revalidatePath("/app/timeline");

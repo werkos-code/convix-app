@@ -12,6 +12,7 @@ import { fail, ok, requireCents, type ActionResult } from "./_result";
 
 function revalidateDebts() {
   revalidatePath("/app");
+  revalidatePath("/app/uitgaand");
   revalidatePath("/app/debts");
   revalidatePath("/app/timeline");
 }

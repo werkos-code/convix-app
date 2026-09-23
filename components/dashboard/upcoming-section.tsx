@@ -73,14 +73,8 @@ export function UpcomingSection({
 
   return (
     <section className="glass-card overflow-hidden rounded-[1.75rem]">
-      <div className="flex items-start justify-between gap-3 px-5 pt-5">
-        <div className="min-w-0">
-          <h2 className="text-sm font-bold text-slate-900">Binnenkort</h2>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">
-            Wat er deze periode nog aankomt — zodat je weet wat er nog moet
-            gebeuren.
-          </p>
-        </div>
+      <div className="flex items-center justify-between gap-3 px-5 pt-5">
+        <h2 className="text-sm font-bold text-slate-900">Binnenkort</h2>
         <Link
           href="/app/timeline"
           className="shrink-0 text-xs font-semibold text-accent"
@@ -126,9 +120,13 @@ export function UpcomingSection({
               </div>
               <ul>
                 {dayItems.map((o) => {
-                  const meta = KIND_META[o.kind] ?? KIND_META.one_time;
-                  const Icon = meta.icon;
                   const isIncome = o.kind === "income";
+                  const returnedOpen =
+                    o.status === "returned_open" && !isIncome;
+                  const meta = returnedOpen
+                    ? KIND_META.debt_payment
+                    : (KIND_META[o.kind] ?? KIND_META.one_time);
+                  const Icon = meta.icon;
                   const amount = isIncome
                     ? Math.abs(o.remaining_open_cents)
                     : -Math.abs(o.remaining_open_cents);
@@ -149,15 +147,17 @@ export function UpcomingSection({
                         <p
                           className={cn(
                             "mt-0.5 text-xs",
-                            overdue ? "font-medium text-rose-600" : "text-slate-500",
+                            overdue || returnedOpen
+                              ? "font-medium text-rose-600"
+                              : "text-slate-500",
                           )}
                         >
-                          {meta.label}
-                          {o.status === "partially_paid"
+                          {returnedOpen
+                            ? "Schuld · mislukte afschrijving"
+                            : meta.label}
+                          {!returnedOpen && o.status === "partially_paid"
                             ? " · deels betaald"
-                            : o.status === "returned_open"
-                              ? " · teruggeboekt"
-                              : null}
+                            : null}
                           {overdue ? " · te laat" : null}
                         </p>
                       </div>

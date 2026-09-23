@@ -76,7 +76,9 @@ export async function completeOnboarding(input: {
         name: a.name,
         type: a.type,
         sort_order: index,
-        last_confirmed_balance_cents: requireCents(a.balanceEuros, "Balance"),
+        last_confirmed_balance_cents: requireCents(a.balanceEuros, "Saldo", {
+          allowNegative: true,
+        }),
         last_confirmed_at: new Date().toISOString(),
       }));
 
@@ -90,7 +92,9 @@ export async function completeOnboarding(input: {
             name: a.name,
             type: a.type,
             sort_order: index,
-            last_confirmed_balance_cents: requireCents(a.balanceEuros, "Balance"),
+            last_confirmed_balance_cents: requireCents(a.balanceEuros, "Saldo", {
+              allowNegative: true,
+            }),
             last_confirmed_at: new Date().toISOString(),
           });
           if (error) return fail(error.message);
@@ -102,7 +106,8 @@ export async function completeOnboarding(input: {
               type: a.type,
               last_confirmed_balance_cents: requireCents(
                 a.balanceEuros,
-                "Balance",
+                "Saldo",
+                { allowNegative: true },
               ),
               last_confirmed_at: new Date().toISOString(),
             })

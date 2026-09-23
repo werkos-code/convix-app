@@ -30,7 +30,7 @@ export default async function HomePage() {
         </p>
         <div className="mt-10">
           <Button asChild size="lg" className="w-full sm:w-auto">
-            <Link href="/login">Inloggen met Google</Link>
+            <Link href="/login">Inloggen</Link>
           </Button>
         </div>
         <p className="mt-6 max-w-sm text-xs leading-relaxed text-slate-500">

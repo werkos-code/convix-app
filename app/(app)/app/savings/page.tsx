@@ -37,11 +37,7 @@ export default async function SavingsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Spaardoelen"
-        description="Bijdragen zijn uitgaven voor Free Spendable — gespaard geld telt niet mee om uit te geven"
-        icon={PiggyBank}
-      />
+      <PageHeader title="Spaardoelen" icon={PiggyBank} />
 
       {goals.length > 0 && (
         <div className="flex flex-wrap gap-2">

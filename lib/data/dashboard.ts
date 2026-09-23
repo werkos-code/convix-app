@@ -186,7 +186,6 @@ export async function loadDashboardData(
 
     const viewingNext = periodView === "next" && nextPeriod != null;
     const viewPeriod = viewingNext ? nextPeriod : openPeriod;
-    const confirmCutoff = openPeriod.balance_confirmed_at;
 
     const [
       accountsRes,
@@ -201,7 +200,7 @@ export async function loadDashboardData(
     ] = await Promise.all([
       supabase
         .from("accounts")
-        .select("id, type, last_confirmed_balance_cents")
+        .select("id, type, last_confirmed_balance_cents, last_confirmed_at")
         .eq("user_id", userId)
         .eq("is_active", true),
       supabase
@@ -261,8 +260,20 @@ export async function loadDashboardData(
       .filter((a) => isSpendableAccountType(a.type))
       .reduce((sum, a) => sum + a.last_confirmed_balance_cents, 0);
 
-    const lastConfirmedActualCents =
-      openPeriod.actual_available_cents ?? spendableConfirmed;
+    /**
+     * Cash basis = sum of spendable account balances (source of truth).
+     * Only snelle uitgaven after the latest confirm adjust cash; Betaald /
+     * Terugboeking on the timeline do not invent bank money.
+     */
+    const latestAccountConfirm = (accountsRes.data ?? [])
+      .map((a) => a.last_confirmed_at)
+      .filter((t): t is string => Boolean(t))
+      .sort()
+      .at(-1);
+
+    const lastConfirmedActualCents = spendableConfirmed;
+    const confirmCutoff =
+      latestAccountConfirm ?? openPeriod.balance_confirmed_at;
 
     const ledgerSinceConfirm = (ledgerRes.data ?? [])
       .filter((e) => {
@@ -315,21 +326,18 @@ export async function loadDashboardData(
       }));
 
     /**
-     * Next-period projection: cash left if current open obligations are met
-     * and reserved budget cash returns to spendable (budgets reset next period).
-     * = current FS + remaining budget reserve.
+     * Next-period projection starts from current tracked cash (bank ± ledger),
+     * then adds that period's expected income and subtracts its open obligations.
+     * Do NOT start from current Free Spendable — that already reserved the
+     * current period's bills and would double-count them against next period.
      */
-    const projectedStartCents = viewingNext
-      ? (currentBreakdown.freeSpendableCents +
-          currentBreakdown.remainingBudgetReserveCents) as Cents
-      : lastConfirmedActualCents;
-
     const breakdown = viewingNext
       ? computeFreeSpendable({
-          lastConfirmedActualCents: projectedStartCents,
+          lastConfirmedActualCents: currentBreakdown.trackedCashCents,
           ledgerSinceConfirm: [],
           periodObligations: viewObligations,
           periodBudgets: viewBudgets,
+          includeExpectedIncome: true,
         })
       : currentBreakdown;
 

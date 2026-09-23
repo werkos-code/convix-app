@@ -10,7 +10,8 @@ import {
   TimelineRow,
   type TimelineEntry,
 } from "@/components/timeline/timeline-row";
-import { formatDateNL } from "@/lib/dates/format";
+import { formatTimelineDayLabel } from "@/lib/dates/format";
+import { cn } from "@/lib/utils";
 
 export type { TimelineEntry };
 
@@ -29,9 +30,12 @@ function groupByDate(entries: TimelineEntry[]) {
 export function TimelineClient({
   entries,
   periodLabel,
+  today,
 }: {
   entries: TimelineEntry[];
   periodLabel?: string | null;
+  /** YYYY-MM-DD in the user timezone — used for “Morgen” / “Vandaag”. */
+  today?: string | null;
 }) {
   const [filter, setFilter] = useState<TimelineFilter>("Alles");
 
@@ -65,14 +69,23 @@ export function TimelineClient({
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {groups.map(([date, items]) => (
+          {groups.map(([date, items]) => {
+            const dayLabel = formatTimelineDayLabel(date, today);
+            const isRelative =
+              dayLabel === "Morgen" || dayLabel === "Vandaag";
+            return (
             <section
               key={date}
               className="glass-card overflow-hidden rounded-[1.75rem]"
             >
               <div className="flex items-center justify-between gap-2 border-b border-slate-100/80 px-4 py-2.5">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                  {formatDateNL(date)}
+                <p
+                  className={cn(
+                    "text-[11px] font-semibold tracking-wide text-slate-400",
+                    isRelative ? "normal-case" : "uppercase",
+                  )}
+                >
+                  {dayLabel}
                 </p>
                 <p className="text-[11px] tabular-nums text-slate-400">
                   {items.length} {items.length === 1 ? "item" : "items"}
@@ -84,7 +97,8 @@ export function TimelineClient({
                 ))}
               </div>
             </section>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

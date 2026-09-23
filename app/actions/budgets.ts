@@ -64,6 +64,7 @@ export async function createBudgetCategory(input: {
     );
 
     revalidatePath("/app");
+    revalidatePath("/app/uitgaand");
     revalidatePath("/app/budgets");
     revalidatePath("/app/expenses/new");
     return ok({ id: data.id });
@@ -164,6 +165,7 @@ export async function updateBudgetCategory(input: {
     }
 
     revalidatePath("/app");
+    revalidatePath("/app/uitgaand");
     revalidatePath("/app/budgets");
     revalidatePath("/app/expenses/new");
     return ok({ id: input.id });
