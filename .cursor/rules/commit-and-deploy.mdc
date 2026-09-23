@@ -1,0 +1,18 @@
+---
+description: Commit and deploy safe changes immediately after finishing work
+alwaysApply: true
+---
+
+# Commit & deploy
+
+After finishing a coherent set of changes:
+
+1. **Commit immediately** (follow the git commit protocol).
+2. **Deploy immediately** by pushing to `origin` (Vercel tracks `main`), unless the change is potentially harmful.
+
+Potentially harmful = skip auto-deploy, commit only if still safe to save, and warn the user first:
+- Auth, RLS, secrets, billing, destructive migrations, data deletion
+- Irreversible production/DNS/infra changes
+- Anything that could lock users out or corrupt money data
+
+Do not wait for the user to ask “commit” or “deploy” for normal UX/UI/bugfix work.
