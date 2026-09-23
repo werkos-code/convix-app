@@ -23,10 +23,10 @@ Goal: open `https://convix.cloud` on your phone, install as PWA, sign in with Go
 
 ### A. GitHub — You
 
-- [ ] Create / use GitHub account
-- [ ] Create **private** repo `convix`
-- [ ] Add remote and push this project (`main`)
-- [ ] Confirm `.env.local` is **not** in the repo
+- [x] Create / use GitHub account
+- [x] Create **private** repo `convix-app` ([werkos-code/convix-app](https://github.com/werkos-code/convix-app))
+- [x] Add remote and push this project (`main`)
+- [x] Confirm `.env.local` is **not** in the repo
 
 ### B. Supabase — You
 
