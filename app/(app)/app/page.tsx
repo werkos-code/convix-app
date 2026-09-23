@@ -92,11 +92,14 @@ async function DashboardPeriodSwitcher({
 
   if (!currentRange) return <span />;
 
+  const showingNext = data.periodView === "next" && !!nextRange;
+
   return (
     <PeriodSwitcher
-      currentLabel={currentRange}
-      nextLabel={nextRange}
-      view={data.periodView}
+      label={showingNext ? nextRange! : currentRange}
+      eyebrow={showingNext ? "Volgende periode" : "Deze periode"}
+      prevHref={showingNext ? "/app" : null}
+      nextHref={!showingNext && nextRange ? "/app?periode=volgende" : null}
       compact
     />
   );

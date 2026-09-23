@@ -29,11 +29,9 @@ function groupByDate(entries: TimelineEntry[]) {
 
 export function TimelineClient({
   entries,
-  periodLabel,
   today,
 }: {
   entries: TimelineEntry[];
-  periodLabel?: string | null;
   /** YYYY-MM-DD in the user timezone — used for “Morgen” / “Vandaag”. */
   today?: string | null;
 }) {
@@ -48,12 +46,6 @@ export function TimelineClient({
 
   return (
     <div className="flex flex-col gap-4">
-      {periodLabel ? (
-        <p className="px-1 text-xs font-medium text-slate-500">
-          Periode {periodLabel}
-        </p>
-      ) : null}
-
       <TimelineFilters value={filter} onChange={setFilter} />
 
       {visible.length === 0 ? (

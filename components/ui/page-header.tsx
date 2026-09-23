@@ -6,6 +6,7 @@ type PageHeaderProps = {
   title: string;
   description?: string;
   icon: LucideIcon;
+  actions?: React.ReactNode;
   className?: string;
 };
 
@@ -13,6 +14,7 @@ export function PageHeader({
   title,
   description,
   icon: Icon,
+  actions,
   className,
 }: PageHeaderProps) {
   return (
@@ -30,6 +32,9 @@ export function PageHeader({
           </p>
         ) : null}
       </div>
+      {actions ? (
+        <div className="shrink-0 self-center pt-0.5">{actions}</div>
+      ) : null}
     </header>
   );
 }

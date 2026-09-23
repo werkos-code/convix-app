@@ -5,24 +5,25 @@ import { formatDateRangeShortNL } from "@/lib/dates/format";
 import { cn } from "@/lib/utils";
 
 type PeriodSwitcherProps = {
-  currentLabel: string;
-  nextLabel: string | null;
-  view: "current" | "next";
+  label: string;
+  eyebrow: string;
+  /** Omit or null to hide the previous control. */
+  prevHref?: string | null;
+  /** Omit or null to hide the next control. */
+  nextHref?: string | null;
   className?: string;
-  /** Tighter chrome for the home header. */
+  /** Tighter chrome for headers. */
   compact?: boolean;
 };
 
 export function PeriodSwitcher({
-  currentLabel,
-  nextLabel,
-  view,
+  label,
+  eyebrow,
+  prevHref = null,
+  nextHref = null,
   className,
   compact = false,
 }: PeriodSwitcherProps) {
-  const showingNext = view === "next" && !!nextLabel;
-  const label = showingNext ? nextLabel! : currentLabel;
-
   return (
     <div
       className={cn(
@@ -32,11 +33,11 @@ export function PeriodSwitcher({
       role="group"
       aria-label="Salarisperiode"
     >
-      {showingNext ? (
+      {prevHref ? (
         <Link
-          href="/app"
+          href={prevHref}
           className="flex size-8 shrink-0 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-white/80"
-          aria-label="Huidige periode"
+          aria-label="Vorige periode"
         >
           <ChevronLeft className="size-4" aria-hidden />
         </Link>
@@ -51,7 +52,7 @@ export function PeriodSwitcher({
         )}
       >
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-          {showingNext ? "Volgende periode" : "Deze periode"}
+          {eyebrow}
         </p>
         <p
           className={cn(
@@ -63,9 +64,9 @@ export function PeriodSwitcher({
         </p>
       </div>
 
-      {nextLabel && !showingNext ? (
+      {nextHref ? (
         <Link
-          href="/app?periode=volgende"
+          href={nextHref}
           className="flex size-8 shrink-0 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-white/80"
           aria-label="Volgende periode"
         >
