@@ -1,9 +1,11 @@
+import { Suspense } from "react";
 import { LayoutList } from "lucide-react";
 
 import {
   TimelineClient,
   type TimelineEntry,
 } from "./timeline-client";
+import { PanelSkeleton } from "@/components/layout/page-loading-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import type { TimelineFilter } from "@/components/timeline/timeline-filters";
 import type { TimelineItemStatus } from "@/components/timeline/timeline-item";
@@ -55,7 +57,7 @@ function statusIsPlanned(status: string) {
   return ["planned", "due", "partially_paid", "returned_open"].includes(status);
 }
 
-export default async function TimelinePage() {
+async function TimelineContent() {
   const { user, supabase } = await requireUser();
 
   let entries: TimelineEntry[] = [];
@@ -146,8 +148,7 @@ export default async function TimelinePage() {
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <PageHeader title="Tijdlijn" icon={LayoutList} />
+    <>
       {loadError ? (
         <p className="glass-chip rounded-2xl px-4 py-3 text-sm text-slate-600">
           {loadError}
@@ -158,6 +159,17 @@ export default async function TimelinePage() {
         periodLabel={periodLabel}
         today={today}
       />
+    </>
+  );
+}
+
+export default function TimelinePage() {
+  return (
+    <div className="flex flex-col gap-5">
+      <PageHeader title="Tijdlijn" icon={LayoutList} />
+      <Suspense fallback={<PanelSkeleton rows={6} />}>
+        <TimelineContent />
+      </Suspense>
     </div>
   );
 }

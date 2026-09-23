@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { PiggyBank } from "lucide-react";
 
 import { SavingsForm } from "./savings-form";
@@ -5,6 +6,7 @@ import {
   SavingsGoalCard,
   type SavingsGoalView,
 } from "./savings-goal-card";
+import { PanelSkeleton } from "@/components/layout/page-loading-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireUser } from "@/lib/auth/require-user";
 import { formatEuro } from "@/lib/money/cents";
@@ -13,7 +15,7 @@ export const metadata = {
   title: "Spaardoelen",
 };
 
-export default async function SavingsPage() {
+async function SavingsContent() {
   let goals: SavingsGoalView[] = [];
   let totalCurrent = 0;
   let totalScheduled = 0;
@@ -36,9 +38,7 @@ export default async function SavingsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader title="Spaardoelen" icon={PiggyBank} />
-
+    <>
       {goals.length > 0 && (
         <div className="flex flex-wrap gap-2">
           <p className="glass-chip rounded-full px-3 py-1.5 text-[11px] font-semibold text-slate-700">
@@ -64,6 +64,17 @@ export default async function SavingsPage() {
       </ul>
 
       <SavingsForm />
+    </>
+  );
+}
+
+export default function SavingsPage() {
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader title="Spaardoelen" icon={PiggyBank} />
+      <Suspense fallback={<PanelSkeleton />}>
+        <SavingsContent />
+      </Suspense>
     </div>
   );
 }

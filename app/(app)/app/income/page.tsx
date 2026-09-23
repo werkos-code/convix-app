@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { Wallet } from "lucide-react";
 
 import { IncomeForm } from "./income-form";
 import { IncomeRuleActions } from "./income-rule-actions";
+import { PanelSkeleton } from "@/components/layout/page-loading-skeleton";
 import { ListRow } from "@/components/ui/list-row";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireUser } from "@/lib/auth/require-user";
@@ -18,7 +20,7 @@ const recurrenceLabels: Record<string, string> = {
   once: "Eenmalig",
 };
 
-export default async function IncomePage() {
+async function IncomeContent() {
   let rules: {
     id: string;
     name: string;
@@ -52,9 +54,7 @@ export default async function IncomePage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader title="Inkomsten" icon={Wallet} />
-
+    <>
       <ul className="glass-card overflow-hidden rounded-[1.75rem] divide-y divide-slate-100/80">
         {rules.length === 0 ? (
           <li className="px-5 py-6 text-sm text-slate-500">
@@ -83,6 +83,17 @@ export default async function IncomePage() {
       </ul>
 
       <IncomeForm defaultDay={salaryDay} />
+    </>
+  );
+}
+
+export default function IncomePage() {
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader title="Inkomsten" icon={Wallet} />
+      <Suspense fallback={<PanelSkeleton />}>
+        <IncomeContent />
+      </Suspense>
     </div>
   );
 }

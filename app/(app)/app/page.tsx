@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import {
   ArrowDownLeft,
@@ -14,7 +15,9 @@ import { DebtsSection } from "@/components/dashboard/debts-section";
 import { PeriodSwitcher } from "@/components/dashboard/period-switcher";
 import { UpcomingSection } from "@/components/dashboard/upcoming-section";
 import { WarningBanner } from "@/components/dashboard/warning-banner";
+import { HomePageSkeleton } from "@/components/layout/page-loading-skeleton";
 import { FreeSpendableHero } from "@/components/money/free-spendable-hero";
+import { Skeleton } from "@/components/ui/skeleton";
 import { requireUser } from "@/lib/auth/require-user";
 import {
   loadDashboardData,
@@ -59,15 +62,53 @@ function StatChip({
   );
 }
 
-export default async function DashboardPage({
-  searchParams,
-}: PageProps<"/app">) {
-  const params = await searchParams;
+function parsePeriodView(
+  params: Record<string, string | string[] | undefined>,
+): DashboardPeriodView {
   const periodeParam = Array.isArray(params.periode)
     ? params.periode[0]
     : params.periode;
-  const periodView: DashboardPeriodView =
-    periodeParam === "volgende" ? "next" : "current";
+  return periodeParam === "volgende" ? "next" : "current";
+}
+
+async function DashboardPeriodSwitcher({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const periodView = parsePeriodView(params);
+  const { user } = await requireUser();
+  const data = await loadDashboardData(user.id, { periodView });
+
+  const currentRange = data.openPeriod
+    ? formatDateRangeShortNL(data.openPeriod.starts_on, data.openPeriod.ends_on)
+    : data.period
+      ? formatDateRangeShortNL(data.period.starts_on, data.period.ends_on)
+      : "";
+  const nextRange = data.nextPeriod
+    ? formatDateRangeShortNL(data.nextPeriod.starts_on, data.nextPeriod.ends_on)
+    : null;
+
+  if (!currentRange) return <span />;
+
+  return (
+    <PeriodSwitcher
+      currentLabel={currentRange}
+      nextLabel={nextRange}
+      view={data.periodView}
+      compact
+    />
+  );
+}
+
+async function DashboardBody({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const periodView = parsePeriodView(params);
 
   const { user, supabase } = await requireUser();
   const data = await loadDashboardData(user.id, { periodView });
@@ -102,42 +143,8 @@ export default async function DashboardPage({
     monthlyCents: (monthlyByDebt.get(d.id) ?? 0) as Cents,
   }));
 
-  const currentRange = data.openPeriod
-    ? formatDateRangeShortNL(data.openPeriod.starts_on, data.openPeriod.ends_on)
-    : data.period
-      ? formatDateRangeShortNL(data.period.starts_on, data.period.ends_on)
-      : "";
-  const nextRange = data.nextPeriod
-    ? formatDateRangeShortNL(data.nextPeriod.starts_on, data.nextPeriod.ends_on)
-    : null;
-
   return (
-    <div className="flex flex-col gap-5">
-      <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 pt-1">
-        <Link href="/app" className="justify-self-start" aria-label="Convix home">
-          <ConvixMark className="size-8" />
-        </Link>
-        {currentRange ? (
-          <div className="flex justify-center justify-self-center">
-            <PeriodSwitcher
-              currentLabel={currentRange}
-              nextLabel={nextRange}
-              view={data.periodView}
-              compact
-            />
-          </div>
-        ) : (
-          <span />
-        )}
-        <Link
-          href="/app/settings"
-          className="flex size-11 shrink-0 items-center justify-center justify-self-end rounded-full bg-white/70 text-slate-700 shadow-sm ring-1 ring-white/80 backdrop-blur transition-colors hover:bg-white hover:text-accent"
-          aria-label="Instellingen"
-        >
-          <Settings className="size-5" strokeWidth={1.75} aria-hidden />
-        </Link>
-      </header>
-
+    <>
       {data.error ? (
         <p className="glass-chip rounded-2xl px-4 py-3 text-sm text-slate-600">
           {data.error.includes("Missing NEXT_PUBLIC_SUPABASE")
@@ -202,7 +209,10 @@ export default async function DashboardPage({
         <section className="glass-card overflow-hidden rounded-[1.75rem]">
           <div className="flex items-center justify-between px-5 pt-5">
             <h2 className="text-sm font-bold text-slate-900">Budgetten</h2>
-            <Link href="/app/uitgaand?tab=budgetten" className="text-xs font-semibold text-accent">
+            <Link
+              href="/app/uitgaand?tab=budgetten"
+              className="text-xs font-semibold text-accent"
+            >
               Alles
             </Link>
           </div>
@@ -244,6 +254,40 @@ export default async function DashboardPage({
       )}
 
       <DebtsSection debts={debts} />
+    </>
+  );
+}
+
+export default function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  return (
+    <div className="flex flex-col gap-5">
+      <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 pt-1">
+        <Link href="/app" className="justify-self-start" aria-label="Convix home">
+          <ConvixMark className="size-8" />
+        </Link>
+        <div className="flex justify-center justify-self-center">
+          <Suspense
+            fallback={<Skeleton className="h-9 w-40 rounded-full bg-white/60" />}
+          >
+            <DashboardPeriodSwitcher searchParams={searchParams} />
+          </Suspense>
+        </div>
+        <Link
+          href="/app/settings"
+          className="flex size-11 shrink-0 items-center justify-center justify-self-end rounded-full bg-white/70 text-slate-700 shadow-sm ring-1 ring-white/80 backdrop-blur transition-colors hover:bg-white hover:text-accent"
+          aria-label="Instellingen"
+        >
+          <Settings className="size-5" strokeWidth={1.75} aria-hidden />
+        </Link>
+      </header>
+
+      <Suspense fallback={<HomePageSkeleton showChrome={false} />}>
+        <DashboardBody searchParams={searchParams} />
+      </Suspense>
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import type { AuthedClient } from "@/lib/auth/require-user";
 import { createClient } from "@/lib/supabase/server";
 import { isSpendableAccountType } from "@/lib/accounts/spendable";
@@ -119,8 +121,9 @@ function mapObligations(
  * Aggregate dashboard payload for a user.
  * `periodView: "next"` shows a projection for the upcoming salary period.
  * Pass `supabase` (e.g. service-role) for cron / admin fan-out.
+ * Cached per request so shell + body Suspense boundaries share one fetch.
  */
-export async function loadDashboardData(
+export const loadDashboardData = cache(async function loadDashboardData(
   userId: string,
   options: {
     periodView?: DashboardPeriodView;
@@ -436,4 +439,4 @@ export async function loadDashboardData(
       isPreview: periodView === "next",
     });
   }
-}
+});

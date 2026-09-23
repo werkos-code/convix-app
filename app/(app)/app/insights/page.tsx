@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -7,6 +8,7 @@ import {
   OctagonAlert,
 } from "lucide-react";
 
+import { PanelSkeleton } from "@/components/layout/page-loading-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireUser } from "@/lib/auth/require-user";
 import { loadDashboardData } from "@/lib/data/dashboard";
@@ -43,15 +45,13 @@ const kindLabels: Record<InsightKind, string> = {
   debt_upcoming: "Schuld",
 };
 
-export default async function InsightsPage() {
+async function InsightsContent() {
   const { user } = await requireUser();
   const data = await loadDashboardData(user.id);
   const insights = data.warnings;
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader title="Inzichten" icon={ChartLine} />
-
+    <>
       {data.error ? (
         <p className="glass-chip rounded-2xl px-4 py-3 text-sm text-slate-600">
           {data.error}
@@ -108,6 +108,17 @@ export default async function InsightsPage() {
           })}
         </ul>
       )}
+    </>
+  );
+}
+
+export default function InsightsPage() {
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader title="Inzichten" icon={ChartLine} />
+      <Suspense fallback={<PanelSkeleton rows={3} />}>
+        <InsightsContent />
+      </Suspense>
     </div>
   );
 }

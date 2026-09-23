@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { Landmark, Wallet } from "lucide-react";
 
 import { AccountForm } from "./account-form";
 import { AccountRowActions } from "./account-row-actions";
+import { PanelSkeleton } from "@/components/layout/page-loading-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireUser } from "@/lib/auth/require-user";
 import type { Account } from "@/lib/types/domain";
@@ -16,7 +18,7 @@ const typeLabels: Record<Account["type"], string> = {
   other: "Overig",
 };
 
-export default async function AccountsPage() {
+async function AccountsContent() {
   const { user, supabase } = await requireUser();
   let accounts: Account[] = [];
   let error: string | null = null;
@@ -44,9 +46,7 @@ export default async function AccountsPage() {
   const inactive = accounts.filter((a) => !a.is_active);
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader title="Rekeningen" icon={Landmark} />
-
+    <>
       {error ? (
         <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           {error}
@@ -112,6 +112,17 @@ export default async function AccountsPage() {
       ) : null}
 
       <AccountForm />
+    </>
+  );
+}
+
+export default function AccountsPage() {
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader title="Rekeningen" icon={Landmark} />
+      <Suspense fallback={<PanelSkeleton />}>
+        <AccountsContent />
+      </Suspense>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
@@ -17,8 +18,9 @@ export class AuthError extends Error {
  * Returns the authenticated user and Supabase client.
  * Redirects to /login when there is no session (default for server actions / RSC).
  * Pass `{ redirect: false }` to throw AuthError instead.
+ * Cached per request so parallel Suspense boundaries share one auth lookup.
  */
-export async function requireUser(options?: {
+export const requireUser = cache(async function requireUser(options?: {
   redirect?: boolean;
 }): Promise<{ user: User; supabase: AuthedClient }> {
   const shouldRedirect = options?.redirect !== false;
@@ -42,4 +44,4 @@ export async function requireUser(options?: {
   }
 
   return { user, supabase };
-}
+});

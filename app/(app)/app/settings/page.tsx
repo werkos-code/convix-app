@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Bell, Clock, Settings } from "lucide-react";
 import { revalidatePath } from "next/cache";
 
@@ -7,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import { requireUser } from "@/lib/auth/require-user";
 import { DEFAULT_SALARY_DAY } from "@/lib/periods/salary-period";
 import {
@@ -59,10 +61,12 @@ async function updateNotificationPrefs(
   }
 }
 
-export default async function SettingsPage() {
+async function SettingsContent() {
   let salaryDay = DEFAULT_SALARY_DAY;
   let timezone = "Europe/Amsterdam";
-  const prefs: NotificationPreferences = { ...DEFAULT_NOTIFICATION_PREFERENCES };
+  const prefs: NotificationPreferences = {
+    ...DEFAULT_NOTIFICATION_PREFERENCES,
+  };
 
   try {
     const { user, supabase } = await requireUser();
@@ -100,9 +104,7 @@ export default async function SettingsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader title="Instellingen" icon={Settings} />
-
+    <>
       <form
         action={updateSalaryDay}
         className="flex flex-col gap-4 rounded-2xl border border-border bg-white p-4"
@@ -153,6 +155,38 @@ export default async function SettingsPage() {
           />
         </div>
       </section>
+    </>
+  );
+}
+
+function SettingsFallback() {
+  return (
+    <div className="flex flex-col gap-6" aria-busy="true">
+      <div className="space-y-4 rounded-2xl border border-border bg-white p-4">
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="h-11 w-full rounded-xl" />
+        <Skeleton className="h-10 w-full rounded-full" />
+      </div>
+      <div className="space-y-3 rounded-2xl border border-border bg-white p-4">
+        <Skeleton className="h-5 w-24" />
+        <Skeleton className="h-4 w-40 bg-white/60" />
+      </div>
+      <div className="space-y-3 rounded-2xl border border-border bg-white p-4">
+        <Skeleton className="h-5 w-28" />
+        <Skeleton className="h-10 w-full rounded-full" />
+        <Skeleton className="h-24 w-full rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader title="Instellingen" icon={Settings} />
+      <Suspense fallback={<SettingsFallback />}>
+        <SettingsContent />
+      </Suspense>
     </div>
   );
 }

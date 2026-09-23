@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { CreditCard } from "lucide-react";
 
 import { KlarnaForm } from "./klarna-form";
@@ -6,6 +7,7 @@ import {
   type KlarnaRowItem,
 } from "./klarna-installment-row";
 import { KlarnaMark } from "@/components/brand/klarna-mark";
+import { PanelSkeleton } from "@/components/layout/page-loading-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireUser } from "@/lib/auth/require-user";
 import { formatEuro } from "@/lib/money/cents";
@@ -22,7 +24,7 @@ const OPEN_STATUSES = new Set([
   "returned_open",
 ]);
 
-export default async function KlarnaPage() {
+async function KlarnaContent() {
   const { user, supabase } = await requireUser();
 
   const [{ data: purchaseRows }, { data: profile }] = await Promise.all([
@@ -51,15 +53,17 @@ export default async function KlarnaPage() {
           .eq("user_id", user.id)
           .in("purchase_id", ids)
           .order("due_on", { ascending: true })
-      : { data: [] as Array<{
-          id: string;
-          purchase_id: string;
-          sequence: number;
-          due_on: string;
-          amount_cents: number;
-          status: string;
-          obligation_id: string | null;
-        }> };
+      : {
+          data: [] as Array<{
+            id: string;
+            purchase_id: string;
+            sequence: number;
+            due_on: string;
+            amount_cents: number;
+            status: string;
+            obligation_id: string | null;
+          }>,
+        };
 
   const purchaseById = new Map((purchaseRows ?? []).map((p) => [p.id, p]));
   const countByPurchase = new Map<string, number>();
@@ -92,9 +96,7 @@ export default async function KlarnaPage() {
   const openTotal = rows.reduce((sum, r) => sum + r.amountCents, 0);
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader title="Klarna" icon={CreditCard} />
-
+    <>
       {openTotal > 0 ? (
         <p className="glass-chip rounded-2xl px-4 py-3 text-sm text-slate-600">
           Nog te betalen{" "}
@@ -129,6 +131,17 @@ export default async function KlarnaPage() {
       </ul>
 
       <KlarnaForm />
+    </>
+  );
+}
+
+export default function KlarnaPage() {
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader title="Klarna" icon={CreditCard} />
+      <Suspense fallback={<PanelSkeleton rows={5} />}>
+        <KlarnaContent />
+      </Suspense>
     </div>
   );
 }
