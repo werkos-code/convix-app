@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { ConvixLogoImage } from "@/components/brand/logo";
+import { ConvixWordmark } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 
@@ -21,9 +21,7 @@ export default async function HomePage() {
       <div aria-hidden className="pointer-events-none absolute inset-0 bg-app-atmosphere" />
 
       <main className="relative z-10 mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-6 py-16">
-        <div className="glass-card rounded-[2rem] bg-[#0a0a0c]/95 p-7 shadow-2xl">
-          <ConvixLogoImage priority className="mx-auto max-w-[220px]" />
-        </div>
+        <ConvixWordmark className="text-2xl [&_svg]:size-11" />
         <h1 className="sr-only">Convix</h1>
         <p className="mt-8 max-w-sm text-lg font-medium leading-relaxed text-slate-600">
           Hoeveel kun je veilig uitgeven tot je volgende salaris?
