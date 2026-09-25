@@ -94,6 +94,7 @@ describe("Free Spendable — Example A mid-period", () => {
         { category_id: fuelId, allocated_cents: eurosToCents(250) },
         { category_id: funId, allocated_cents: eurosToCents(100) },
       ],
+      periodQuickExpenseCents: eurosToCents(46.5),
     });
 
     // tracked = 2058 - 42 - 4.50 = 2011.50
@@ -102,6 +103,8 @@ describe("Free Spendable — Example A mid-period", () => {
     expect(result.remainingBudgetReserveCents).toBe(eurosToCents(708));
     // open = 690+35+100+100 = 925
     expect(result.openObligationsCents).toBe(eurosToCents(925));
+    // expense total = all bills (925) + snelle uitgaven (42+4.50) = 971.50
+    expect(result.expenseTotalCents).toBe(eurosToCents(971.5));
     // FS = 2011.50 - 708 - 925 = 378.50
     expect(result.freeSpendableCents).toBe(eurosToCents(378.5));
   });
@@ -208,6 +211,29 @@ describe("Free Spendable — saldo is current reality", () => {
     expect(after.trackedCashCents).toBe(eurosToCents(800));
     expect(after.openObligationsCents).toBe(0);
     expect(after.freeSpendableCents).toBe(before.freeSpendableCents);
+    // Uitgaven chip still shows the full bill after Betaald
+    expect(before.expenseTotalCents).toBe(eurosToCents(200));
+    expect(after.expenseTotalCents).toBe(eurosToCents(200));
+  });
+
+  it("Uitgaven total includes snelle uitgaven for the whole period", () => {
+    const result = computeFreeSpendable({
+      lastConfirmedActualCents: eurosToCents(1000),
+      ledgerSinceConfirm: [],
+      periodObligations: [
+        {
+          kind: "fixed_expense",
+          status: "settled",
+          remaining_open_cents: 0,
+          amount_cents: eurosToCents(500),
+        },
+      ],
+      periodBudgets: [],
+      periodQuickExpenseCents: eurosToCents(75),
+    });
+
+    expect(result.openObligationsCents).toBe(0);
+    expect(result.expenseTotalCents).toBe(eurosToCents(575));
   });
 
   it("ignores unpaid expected income — settled income ledger moves cash", () => {

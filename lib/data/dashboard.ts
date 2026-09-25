@@ -66,6 +66,7 @@ const EMPTY_BREAKDOWN: FreeSpendableBreakdown = {
   openObligationsCents: 0,
   remainingBudgetReserveCents: 0,
   incomeTotalCents: 0,
+  expenseTotalCents: 0,
   fixedOpenCents: 0,
   savingsOpenCents: 0,
   klarnaOpenCents: 0,
@@ -307,11 +308,16 @@ export const loadDashboardData = cache(async function loadDashboardData(
         allocated_cents: b.allocated_cents,
       }));
 
+    const openPeriodQuickExpenseCents = (ledgerRes.data ?? [])
+      .filter((e) => e.type === "expense")
+      .reduce((sum, e) => sum + Math.abs(e.amount_cents), 0);
+
     const currentBreakdown = computeFreeSpendable({
       lastConfirmedActualCents,
       ledgerSinceConfirm,
       periodObligations: openPeriodObligations,
       periodBudgets: openPeriodBudgets,
+      periodQuickExpenseCents: openPeriodQuickExpenseCents,
     });
 
     const viewObligations = (viewObligationsRes.data ?? []).map((o) => ({
@@ -328,6 +334,20 @@ export const loadDashboardData = cache(async function loadDashboardData(
         allocated_cents: b.allocated_cents,
       }));
 
+    let viewQuickExpenseCents = openPeriodQuickExpenseCents;
+    if (viewingNext && viewPeriod) {
+      const { data: viewExpenses } = await supabase
+        .from("ledger_events")
+        .select("amount_cents")
+        .eq("user_id", userId)
+        .eq("period_id", viewPeriod.id)
+        .eq("type", "expense");
+      viewQuickExpenseCents = (viewExpenses ?? []).reduce(
+        (sum, e) => sum + Math.abs(e.amount_cents),
+        0,
+      );
+    }
+
     /**
      * Next-period projection starts from current tracked cash (bank ± ledger),
      * then adds that period's expected income and subtracts its open obligations.
@@ -340,6 +360,7 @@ export const loadDashboardData = cache(async function loadDashboardData(
           ledgerSinceConfirm: [],
           periodObligations: viewObligations,
           periodBudgets: viewBudgets,
+          periodQuickExpenseCents: viewQuickExpenseCents,
           includeExpectedIncome: true,
         })
       : currentBreakdown;

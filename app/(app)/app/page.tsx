@@ -187,9 +187,7 @@ async function DashboardBody({
         />
         <StatChip
           label="Uitgaven"
-          amountCents={
-            (b.openObligationsCents + b.variableSpentCents) as Cents
-          }
+          amountCents={b.expenseTotalCents}
           icon={ArrowUpRight}
           tone="expense"
         />

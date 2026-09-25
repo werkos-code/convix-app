@@ -47,6 +47,11 @@ export interface CalcInput {
   /** Budget allocations for the period */
   periodBudgets: Pick<PeriodBudget, "category_id" | "allocated_cents">[];
   /**
+   * Sum of ledger `expense` (snelle uitgaven) for the whole period.
+   * Used for the Uitgaven total — not limited to “since last confirm”.
+   */
+  periodQuickExpenseCents?: Cents;
+  /**
    * When true, open income obligations inflate Free Spendable.
    * Default false: bank saldo (+ settled income ledger) is current reality.
    */
@@ -177,6 +182,24 @@ export function computeFreeSpendable(input: CalcInput): FreeSpendableBreakdown {
     .filter((o) => o.kind === "income")
     .reduce((sum, o) => sum + o.amount_cents, 0);
 
+  /** Period bills (paid + open) — mirrors incomeTotalCents for the Uitgaven chip. */
+  const obligationExpenseCents = input.periodObligations
+    .filter((o) =>
+      (
+        [
+          "fixed_expense",
+          "one_time",
+          "klarna_installment",
+          "debt_payment",
+          "savings_contribution",
+        ] as ObligationKind[]
+      ).includes(o.kind),
+    )
+    .reduce((sum, o) => sum + o.amount_cents, 0);
+
+  const expenseTotalCents =
+    obligationExpenseCents + (input.periodQuickExpenseCents ?? 0);
+
   const freeSpendableCents =
     trackedCashCents +
     expectedIncomeCents -
@@ -190,6 +213,7 @@ export function computeFreeSpendable(input: CalcInput): FreeSpendableBreakdown {
     openObligationsCents,
     remainingBudgetReserveCents: budgets.remainingCents,
     incomeTotalCents,
+    expenseTotalCents,
     fixedOpenCents,
     savingsOpenCents,
     klarnaOpenCents,

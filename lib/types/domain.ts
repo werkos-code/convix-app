@@ -122,6 +122,8 @@ export interface FreeSpendableBreakdown {
   openObligationsCents: Cents;
   remainingBudgetReserveCents: Cents;
   incomeTotalCents: Cents;
+  /** All period bills + snelle uitgaven (paid and open), for the Uitgaven chip. */
+  expenseTotalCents: Cents;
   fixedOpenCents: Cents;
   savingsOpenCents: Cents;
   klarnaOpenCents: Cents;

@@ -10,6 +10,7 @@ const emptyBreakdown = {
   openObligationsCents: eurosToCents(100),
   remainingBudgetReserveCents: eurosToCents(200),
   incomeTotalCents: eurosToCents(3000),
+  expenseTotalCents: eurosToCents(300),
   fixedOpenCents: eurosToCents(50),
   savingsOpenCents: 0,
   klarnaOpenCents: eurosToCents(50),
