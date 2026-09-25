@@ -193,7 +193,7 @@ async function DashboardBody({
         />
         <StatChip
           label="Sparen"
-          amountCents={data.savingsTotalCents}
+          amountCents={b.savingsPeriodCents}
           icon={PiggyBank}
           tone="savings"
         />

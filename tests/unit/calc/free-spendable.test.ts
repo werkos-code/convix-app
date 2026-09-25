@@ -236,6 +236,29 @@ describe("Free Spendable — saldo is current reality", () => {
     expect(result.expenseTotalCents).toBe(eurosToCents(575));
   });
 
+  it("keeps budget spend period-wide after a later saldo confirm", () => {
+    const cat = "groceries";
+    const result = computeFreeSpendable({
+      lastConfirmedActualCents: eurosToCents(950),
+      ledgerSinceConfirm: [],
+      periodBudgetLedger: [
+        {
+          type: "expense",
+          amount_cents: eurosToCents(50),
+          budget_category_id: cat,
+        },
+      ],
+      periodObligations: [],
+      periodBudgets: [{ category_id: cat, allocated_cents: eurosToCents(400) }],
+    });
+
+    // Cash already reflects the €50 via confirmed saldo; budget must still
+    // count that spend or FS would over-reserve the allocation.
+    expect(result.variableSpentCents).toBe(eurosToCents(50));
+    expect(result.remainingBudgetReserveCents).toBe(eurosToCents(350));
+    expect(result.freeSpendableCents).toBe(eurosToCents(600));
+  });
+
   it("ignores unpaid expected income — settled income ledger moves cash", () => {
     const result = computeFreeSpendable({
       lastConfirmedActualCents: eurosToCents(-98.17),

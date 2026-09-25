@@ -39,6 +39,15 @@ export interface CalcInput {
    * Unpaid expected income is never added here — only settled `income` events.
    */
   ledgerSinceConfirm: Pick<LedgerEvent, "type" | "amount_cents" | "budget_category_id">[];
+  /**
+   * Categorized spend for the whole period (budget bars + remaining reserve).
+   * Must be period-wide — not “since confirm” — so a mid-period saldo
+   * confirm cannot re-inflate unused budget reserves.
+   */
+  periodBudgetLedger?: Pick<
+    LedgerEvent,
+    "type" | "amount_cents" | "budget_category_id"
+  >[];
   /** Obligations belonging to the open period */
   periodObligations: Pick<
     Obligation,
@@ -100,15 +109,16 @@ export function computeTrackedCash(
 /**
  * Remaining variable budget reserve = sum of max(0, allocated − spent_in_category).
  * Overspend does not create negative reserve.
+ * `periodBudgetLedger` should cover the whole salary period.
  */
 export function computeRemainingBudgetReserve(
   periodBudgets: CalcInput["periodBudgets"],
-  ledgerSinceConfirm: CalcInput["ledgerSinceConfirm"],
+  periodBudgetLedger: NonNullable<CalcInput["periodBudgetLedger"]>,
 ): { remainingCents: Cents; allocatedCents: Cents; spentCents: Cents } {
   const spentByCategory = new Map<string, Cents>();
   let spentTotal = 0;
 
-  for (const e of ledgerSinceConfirm) {
+  for (const e of periodBudgetLedger) {
     if (
       (e.type === "expense" || e.type === "payment") &&
       e.budget_category_id
@@ -175,11 +185,15 @@ export function computeFreeSpendable(input: CalcInput): FreeSpendableBreakdown {
 
   const budgets = computeRemainingBudgetReserve(
     input.periodBudgets,
-    input.ledgerSinceConfirm,
+    input.periodBudgetLedger ?? input.ledgerSinceConfirm,
   );
 
   const incomeTotalCents = input.periodObligations
     .filter((o) => o.kind === "income")
+    .reduce((sum, o) => sum + o.amount_cents, 0);
+
+  const savingsPeriodCents = input.periodObligations
+    .filter((o) => o.kind === "savings_contribution")
     .reduce((sum, o) => sum + o.amount_cents, 0);
 
   /** Period bills (paid + open) — mirrors incomeTotalCents for the Uitgaven chip. */
@@ -214,6 +228,7 @@ export function computeFreeSpendable(input: CalcInput): FreeSpendableBreakdown {
     remainingBudgetReserveCents: budgets.remainingCents,
     incomeTotalCents,
     expenseTotalCents,
+    savingsPeriodCents,
     fixedOpenCents,
     savingsOpenCents,
     klarnaOpenCents,

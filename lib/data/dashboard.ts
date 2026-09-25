@@ -67,6 +67,7 @@ const EMPTY_BREAKDOWN: FreeSpendableBreakdown = {
   remainingBudgetReserveCents: 0,
   incomeTotalCents: 0,
   expenseTotalCents: 0,
+  savingsPeriodCents: 0,
   fixedOpenCents: 0,
   savingsOpenCents: 0,
   klarnaOpenCents: 0,
@@ -312,9 +313,16 @@ export const loadDashboardData = cache(async function loadDashboardData(
       .filter((e) => e.type === "expense")
       .reduce((sum, e) => sum + Math.abs(e.amount_cents), 0);
 
+    const openPeriodBudgetLedger = (ledgerRes.data ?? []).map((e) => ({
+      type: e.type as LedgerEvent["type"],
+      amount_cents: e.amount_cents,
+      budget_category_id: e.budget_category_id,
+    }));
+
     const currentBreakdown = computeFreeSpendable({
       lastConfirmedActualCents,
       ledgerSinceConfirm,
+      periodBudgetLedger: openPeriodBudgetLedger,
       periodObligations: openPeriodObligations,
       periodBudgets: openPeriodBudgets,
       periodQuickExpenseCents: openPeriodQuickExpenseCents,
@@ -335,17 +343,21 @@ export const loadDashboardData = cache(async function loadDashboardData(
       }));
 
     let viewQuickExpenseCents = openPeriodQuickExpenseCents;
+    let viewBudgetLedger = openPeriodBudgetLedger;
     if (viewingNext && viewPeriod) {
-      const { data: viewExpenses } = await supabase
+      const { data: viewLedgerRows } = await supabase
         .from("ledger_events")
-        .select("amount_cents")
+        .select("type, amount_cents, budget_category_id")
         .eq("user_id", userId)
-        .eq("period_id", viewPeriod.id)
-        .eq("type", "expense");
-      viewQuickExpenseCents = (viewExpenses ?? []).reduce(
-        (sum, e) => sum + Math.abs(e.amount_cents),
-        0,
-      );
+        .eq("period_id", viewPeriod.id);
+      viewBudgetLedger = (viewLedgerRows ?? []).map((e) => ({
+        type: e.type as LedgerEvent["type"],
+        amount_cents: e.amount_cents,
+        budget_category_id: e.budget_category_id,
+      }));
+      viewQuickExpenseCents = viewBudgetLedger
+        .filter((e) => e.type === "expense")
+        .reduce((sum, e) => sum + Math.abs(e.amount_cents), 0);
     }
 
     /**
@@ -358,6 +370,7 @@ export const loadDashboardData = cache(async function loadDashboardData(
       ? computeFreeSpendable({
           lastConfirmedActualCents: currentBreakdown.trackedCashCents,
           ledgerSinceConfirm: [],
+          periodBudgetLedger: viewBudgetLedger,
           periodObligations: viewObligations,
           periodBudgets: viewBudgets,
           periodQuickExpenseCents: viewQuickExpenseCents,
@@ -370,18 +383,16 @@ export const loadDashboardData = cache(async function loadDashboardData(
     );
 
     const spentByCategory = new Map<string, number>();
-    if (!viewingNext) {
-      for (const e of ledgerSinceConfirm) {
-        if (
-          (e.type === "expense" || e.type === "payment") &&
-          e.budget_category_id
-        ) {
-          const prev = spentByCategory.get(e.budget_category_id) ?? 0;
-          spentByCategory.set(
-            e.budget_category_id,
-            prev + Math.abs(e.amount_cents),
-          );
-        }
+    for (const e of viewBudgetLedger) {
+      if (
+        (e.type === "expense" || e.type === "payment") &&
+        e.budget_category_id
+      ) {
+        const prev = spentByCategory.get(e.budget_category_id) ?? 0;
+        spentByCategory.set(
+          e.budget_category_id,
+          prev + Math.abs(e.amount_cents),
+        );
       }
     }
 
