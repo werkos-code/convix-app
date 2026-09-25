@@ -169,7 +169,48 @@ describe("Free Spendable — saldo is current reality", () => {
     expect(result.freeSpendableCents).toBe(eurosToCents(1960.68));
   });
 
-  it("ignores Betaald/Terugboeking ledger for cash — saldo wins", () => {
+  it("settling Betaald keeps FS stable — cash out matches released reservation", () => {
+    const before = computeFreeSpendable({
+      lastConfirmedActualCents: eurosToCents(1000),
+      ledgerSinceConfirm: [],
+      periodObligations: [
+        {
+          kind: "fixed_expense",
+          status: "planned",
+          remaining_open_cents: eurosToCents(200),
+          amount_cents: eurosToCents(200),
+        },
+      ],
+      periodBudgets: [],
+    });
+
+    const after = computeFreeSpendable({
+      lastConfirmedActualCents: eurosToCents(1000),
+      ledgerSinceConfirm: [
+        {
+          type: "payment",
+          amount_cents: eurosToCents(200),
+          budget_category_id: null,
+        },
+      ],
+      periodObligations: [
+        {
+          kind: "fixed_expense",
+          status: "settled",
+          remaining_open_cents: 0,
+          amount_cents: eurosToCents(200),
+        },
+      ],
+      periodBudgets: [],
+    });
+
+    expect(before.freeSpendableCents).toBe(eurosToCents(800));
+    expect(after.trackedCashCents).toBe(eurosToCents(800));
+    expect(after.openObligationsCents).toBe(0);
+    expect(after.freeSpendableCents).toBe(before.freeSpendableCents);
+  });
+
+  it("ignores unpaid expected income — settled income ledger moves cash", () => {
     const result = computeFreeSpendable({
       lastConfirmedActualCents: eurosToCents(-98.17),
       ledgerSinceConfirm: [
@@ -205,9 +246,10 @@ describe("Free Spendable — saldo is current reality", () => {
       periodBudgets: [],
     });
 
-    // Only the snelle uitgave (−10) moves cash; income/payment/refund ignored
-    expect(result.trackedCashCents).toBe(eurosToCents(-108.17));
-    expect(result.freeSpendableCents).toBe(eurosToCents(-249.62));
+    // −98.17 + 2058.85 − 350 + 141.45 − 10 = 1742.13
+    expect(result.trackedCashCents).toBe(eurosToCents(1742.13));
+    // 1742.13 − 141.45 = 1600.68
+    expect(result.freeSpendableCents).toBe(eurosToCents(1600.68));
   });
 });
 

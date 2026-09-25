@@ -15,11 +15,18 @@ const OPEN_STATUSES: ObligationStatus[] = [
   "returned_open",
 ];
 
+/** Settlements and snelle uitgaven that leave the bank. */
 const CASH_OUT_TYPES = new Set([
   "expense",
+  "payment",
+  "savings_contribution",
+  "debt_payment",
 ]);
 
-/** Explicit signed adjustments only — not income/payment/refund settlements. */
+/** Settled income / returned bank money that enters the bank. */
+const CASH_IN_TYPES = new Set(["income", "refund_return"]);
+
+/** Explicit signed adjustments. */
 const CASH_ADJUST_TYPES = new Set(["balance_adjustment"]);
 
 export interface CalcInput {
@@ -27,9 +34,9 @@ export interface CalcInput {
   lastConfirmedActualCents: Cents;
   /**
    * Ledger since last balance confirmation.
-   * Only `expense` (and `balance_adjustment`) move tracked cash.
-   * Betaald / terugboeking on obligations are status only — bank saldo is
-   * updated when you edit your account balance.
+   * Settlements move tracked cash so Free Spendable stays stable when an
+   * obligation leaves “open” (cash down, reservation released).
+   * Unpaid expected income is never added here — only settled `income` events.
    */
   ledgerSinceConfirm: Pick<LedgerEvent, "type" | "amount_cents" | "budget_category_id">[];
   /** Obligations belonging to the open period */
@@ -41,7 +48,7 @@ export interface CalcInput {
   periodBudgets: Pick<PeriodBudget, "category_id" | "allocated_cents">[];
   /**
    * When true, open income obligations inflate Free Spendable.
-   * Default false: bank saldo is current reality.
+   * Default false: bank saldo (+ settled income ledger) is current reality.
    */
   includeExpectedIncome?: boolean;
 }
@@ -60,10 +67,13 @@ function sumOpenByKinds(
 }
 
 /**
- * Tracked cash = confirmed bank saldo, plus snelle uitgaven sinds die bevestiging.
- * Obligation settlements (Betaald / Terugboeking / inkomen) do NOT move cash —
- * those only change open obligations; update your account balance when money
- * actually hits or leaves the bank.
+ * Tracked cash ≈ last confirmed bank saldo
+ *   + income / refunds settled since confirm
+ *   − expenses / payments / savings / debt settled since confirm
+ *   ± balance_adjustment
+ *
+ * Marking Betaald therefore lowers cash by the same amount the obligation
+ * stops reserving — Free Spendable does not jump.
  */
 export function computeTrackedCash(
   lastConfirmedActualCents: Cents,
@@ -73,6 +83,8 @@ export function computeTrackedCash(
   for (const e of ledgerSinceConfirm) {
     if (CASH_ADJUST_TYPES.has(e.type)) {
       cash += e.amount_cents;
+    } else if (CASH_IN_TYPES.has(e.type)) {
+      cash += Math.abs(e.amount_cents);
     } else if (CASH_OUT_TYPES.has(e.type)) {
       cash -= Math.abs(e.amount_cents);
     }
@@ -120,12 +132,12 @@ export function computeRemainingBudgetReserve(
 
 /**
  * Free Spendable =
- *   tracked_cash                          // confirmed saldo ± snelle uitgaven
- *   − remaining_open_obligations (fixed, klarna, debt, savings — not income)
+ *   tracked_cash
+ *   − remaining_open_obligations (fixed, klarna, debt, savings — not unpaid income)
  *   − remaining_unspent_budget_allocations
  *
- * Confirmed bank saldo is the source of truth. Marking Betaald / Terugboeking
- * does not invent cash — update your account balance when money really moves.
+ * Settled bills are not reserved again: they already reduced tracked_cash via
+ * the payment ledger. Paying therefore keeps Free Spendable stable.
  */
 export function computeFreeSpendable(input: CalcInput): FreeSpendableBreakdown {
   const includeExpectedIncome = input.includeExpectedIncome ?? false;

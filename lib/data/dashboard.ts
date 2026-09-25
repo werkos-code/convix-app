@@ -264,9 +264,9 @@ export const loadDashboardData = cache(async function loadDashboardData(
       .reduce((sum, a) => sum + a.last_confirmed_balance_cents, 0);
 
     /**
-     * Cash basis = sum of spendable account balances (source of truth).
-     * Only snelle uitgaven after the latest confirm adjust cash; Betaald /
-     * Terugboeking on the timeline do not invent bank money.
+     * Cash basis = spendable account balances, then ledger since last confirm:
+     * settled income/refunds in, payments/expenses/savings/debt out.
+     * Betaald thus lowers tracked cash as the open reservation is released.
      */
     const latestAccountConfirm = (accountsRes.data ?? [])
       .map((a) => a.last_confirmed_at)
